@@ -37,12 +37,12 @@ pub enum Token {
     LeftBrace,
     RightBrace,
     LeftParen,
-    RighParen,
+    RightParen,
     LeftBracket,
     RightBracket,
     Assignment,
     Relop(Relop),
-    Id(usize),
+    Id(String),
     Literal(usize),
     // }}}
 }
@@ -60,17 +60,73 @@ impl Lexer {
         Lexer {
             filename: String::from(filename),
             lexem_begin: 0,
-            lookahead: 0,
+            lookahead: 1,
             buffer: fs::read_to_string(filename).unwrap(),
             tokens: vec![],
         }
     }
 
     pub fn analyse(&mut self) {
-        let mut new_token: Token;
+        println!("Analysis of \n\n{}\n\n", self.buffer);
+        let mut new_token: Option<Token>;
+    
+        let bytes_slice = self.buffer.as_bytes();
 
-        for letter in self.buffer.chars() {
+        while self.lookahead < bytes_slice.len() {
+            new_token = None;
+
+            let mut letter = bytes_slice[self.lexem_begin] as char;
+
+            if letter.is_whitespace() {
+                self.lexem_begin += 1;
+                self.lookahead += 1;
+                continue;
+            }
             print!("{}", letter);
+
+            // match one-letter puncutation
+            let mut found_puncutation = true;
+            match letter {
+                ':' => new_token = Some(Token::Colon),
+                '(' => new_token = Some(Token::LeftParen),
+                ')' => new_token = Some(Token::RightParen),
+                '{' => new_token = Some(Token::LeftBrace),
+                '}' => new_token = Some(Token::RightBrace),
+                '[' => new_token = Some(Token::LeftBracket),
+                ']' => new_token = Some(Token::RightBracket),
+                _ => {
+                    found_puncutation = false;
+                }
+            }
+
+            if found_puncutation {
+                self.lexem_begin += 1;
+                self.lookahead += 1;
+
+                self.tokens.push(new_token.unwrap());
+                continue;
+            }
+
+            loop {
+                letter = bytes_slice[self.lookahead] as char;
+                
+                if !letter.is_alphabetic() {
+                    let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                    let lexem = String::from(lexem);
+                    new_token = Some(Token::Id(lexem));
+
+                    self.lexem_begin = self.lookahead;
+                    self.lookahead = self.lexem_begin + 1;
+                    break;
+                }
+
+                self.lookahead += 1
+            }
+
+            if new_token.is_some() {
+                let temp = new_token.unwrap();
+                self.tokens.push(temp);
+            }
         }
     }
 
@@ -106,7 +162,7 @@ impl Display for Token {
             Token::LeftBrace => write!(f, "<LeftBrace>"),
             Token::RightBrace => write!(f, "<RightBrace>"),
             Token::LeftParen => write!(f, "<LeftParen>"),
-            Token::RighParen => write!(f, "<RighParen>"),
+            Token::RightParen => write!(f, "<RightParen>"),
             Token::LeftBracket => write!(f, "<LeftBracket>"),
             Token::RightBracket => write!(f, "<RightBracket>"),
             Token::Assignment => write!(f, "<<->"),
