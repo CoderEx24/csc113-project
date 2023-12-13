@@ -1,14 +1,20 @@
 use std::fmt::Display;
+use std::collections::HashMap;
 use std::fs;
 
 #[derive(Clone, Debug)]
 pub enum Relop {
     EE,
-    NE, 
-    GT, 
-    GE, 
     LT, 
     LE
+}
+
+#[derive(Clone, Debug)]
+pub enum MathOp {
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
 }
 
 #[derive(Clone, Debug)]
@@ -34,16 +40,21 @@ pub enum Token {
     Not,
     True,
     Colon,
+    SemiColon,
     LeftBrace,
     RightBrace,
     LeftParen,
     RightParen,
     LeftBracket,
     RightBracket,
+    FatArrow,
+    Dot,
+    At,
     Assignment,
     Relop(Relop),
+    MathOp(MathOp),
     Id(String),
-    Literal(usize),
+    Literal(String),
     // }}}
 }
 
@@ -66,11 +77,41 @@ impl Lexer {
         }
     }
 
+    fn advance(&mut self) {
+        self.lexem_begin += 1;
+        self.lookahead += 1;
+    }
+
     pub fn analyse(&mut self) {
-        println!("Analysis of \n\n{}\n\n", self.buffer);
+        
+        let keywords = HashMap::from([
+            // {{{
+            ("class", Token::Class),
+            ("else", Token::Else),
+            ("false", Token::False),
+            ("fi", Token::Fi),
+            ("if", Token::If),
+            ("in", Token::In),
+            ("inherits", Token::Inherits),
+            ("isvoid", Token::Isvoid),
+            ("let", Token::Let),
+            ("loop", Token::Loop),
+            ("pool", Token::Pool),
+            ("then", Token::Then),
+            ("while", Token::While),
+            ("case", Token::Case),
+            ("esac", Token::Esac),
+            ("new", Token::New),
+            ("of", Token::Of),
+            ("not", Token::Not),
+            ("true", Token::True),
+            // }}}
+        ]);
+
         let mut new_token: Option<Token>;
     
-        let bytes_slice = self.buffer.as_bytes();
+        let temp = self.buffer.clone();
+        let bytes_slice = temp.as_bytes();
 
         while self.lookahead < bytes_slice.len() {
             new_token = None;
@@ -78,49 +119,135 @@ impl Lexer {
             let mut letter = bytes_slice[self.lexem_begin] as char;
 
             if letter.is_whitespace() {
-                self.lexem_begin += 1;
-                self.lookahead += 1;
+                self.advance();
                 continue;
             }
             print!("{}", letter);
+            
+            if letter == '(' {
+                let mut lookahead = bytes_slice[self.lookahead] as char;
+                if lookahead == '*' {
+                    loop {
+                        self.advance();
+                        letter = bytes_slice[self.lexem_begin] as char;
+                        lookahead = bytes_slice[self.lookahead] as char;
 
-            // match one-letter puncutation
-            let mut found_puncutation = true;
+                        if letter == '*' && lookahead == ')' {
+                            self.lexem_begin += 2;
+                            self.lookahead += 2;
+
+                            break;
+                        }
+                    }
+                }
+            }
+
             match letter {
-                ':' => new_token = Some(Token::Colon),
-                '(' => new_token = Some(Token::LeftParen),
-                ')' => new_token = Some(Token::RightParen),
-                '{' => new_token = Some(Token::LeftBrace),
-                '}' => new_token = Some(Token::RightBrace),
-                '[' => new_token = Some(Token::LeftBracket),
-                ']' => new_token = Some(Token::RightBracket),
+                ':' => {new_token = Some(Token::Colon); self.advance()},
+                '(' => {new_token = Some(Token::LeftParen); self.advance()},
+                ')' => {new_token = Some(Token::RightParen); self.advance()},
+                '{' => {new_token = Some(Token::LeftBrace); self.advance()},
+                '}' => {new_token = Some(Token::RightBrace); self.advance()},
+                '[' => {new_token = Some(Token::LeftBracket); self.advance()},
+                ']' => {new_token = Some(Token::RightBracket); self.advance()},
+                ';' => {new_token = Some(Token::SemiColon); self.advance()},
+                '~' => {new_token = Some(Token::Not); self.advance()},
+                '+' => {new_token = Some(Token::MathOp(MathOp::Plus)); self.advance()},
+                '-' => {new_token = Some(Token::MathOp(MathOp::Minus)); self.advance()},
+                '*' => {new_token = Some(Token::MathOp(MathOp::Multiply)); self.advance()},
+                '/' => {new_token = Some(Token::MathOp(MathOp::Divide)); self.advance()},
+                '.' => {new_token = Some(Token::Dot); self.advance()},
+                '@' => {new_token = Some(Token::At); self.advance()},
+                '<' => {
+                    letter = bytes_slice[self.lookahead] as char;
+                    match letter {
+                        '-' => { new_token = Some(Token::Assignment); self.advance(); }
+                        '=' => { new_token = Some(Token::Relop(Relop::LE)); self.advance(); }
+                        _ => new_token = Some(Token::Relop(Relop::LT)),
+                    }
+
+                    self.advance();
+                },
+                '=' => {
+                    letter = bytes_slice[self.lookahead] as char;
+                    match letter {
+                        '>' => { new_token = Some(Token::FatArrow); self.advance(); },
+                        _ => new_token = Some(Token::Relop(Relop::EE)),
+                    }
+                    
+                    self.advance();
+                },
+                'a'..='z' | 'A'..='Z' => {
+                    loop {
+                        letter = bytes_slice[self.lookahead] as char;
+                        
+                        if !letter.is_alphabetic() {
+                            let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                            let lexem = String::from(lexem);
+                            new_token = Some(if keywords.contains_key(&lexem[..]) {
+                                keywords.get(&lexem[..]).unwrap().clone()
+                            }
+                            else {
+                                Token::Id(lexem)
+                            });
+
+                            self.lexem_begin = self.lookahead;
+                            self.lookahead = self.lexem_begin + 1;
+                            break;
+                        }
+
+                        self.lookahead += 1
+                    }
+                },
+                '0'..='9' => {
+                    loop {
+                        letter = bytes_slice[self.lookahead] as char;
+                        
+                        if !letter.is_alphanumeric() {
+                            let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                            let lexem = String::from(lexem);
+                            new_token = Some(Token::Literal(lexem));
+
+                            self.lexem_begin = self.lookahead;
+                            self.lookahead = self.lexem_begin + 1;
+                            break;
+                        }
+                        else if !letter.is_numeric() {
+                            while letter.is_alphanumeric() {
+                                letter = bytes_slice[self.lookahead] as char;
+                                self.lookahead += 1;
+                            }
+
+                            let lexem = &self.buffer[self.lexem_begin..self.lookahead - 1];
+                            panic!("[ERROR] invalid id {}", lexem);
+
+                        }
+
+                        self.lookahead += 1
+                    }
+
+                },
+                '\"' => {
+                    loop {
+                        letter = bytes_slice[self.lookahead] as char;
+                        
+                        if letter == '\"' {
+                            let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
+                            let lexem = String::from(lexem);
+                            new_token = Some(Token::Literal(lexem));
+
+                            self.lexem_begin = self.lookahead + 1;
+                            self.lookahead = self.lexem_begin + 1;
+                            break;
+                        }
+
+                        self.lookahead += 1
+                    }
+
+                }
                 _ => {
-                    found_puncutation = false;
+                    panic!("[ERROR] unrecgonized lexem beginning {}\nprobably not ASCII", letter);
                 }
-            }
-
-            if found_puncutation {
-                self.lexem_begin += 1;
-                self.lookahead += 1;
-
-                self.tokens.push(new_token.unwrap());
-                continue;
-            }
-
-            loop {
-                letter = bytes_slice[self.lookahead] as char;
-                
-                if !letter.is_alphabetic() {
-                    let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                    let lexem = String::from(lexem);
-                    new_token = Some(Token::Id(lexem));
-
-                    self.lexem_begin = self.lookahead;
-                    self.lookahead = self.lexem_begin + 1;
-                    break;
-                }
-
-                self.lookahead += 1
             }
 
             if new_token.is_some() {
@@ -158,15 +285,20 @@ impl Display for Token {
             Token::Of => write!(f, "<Of>"),
             Token::Not => write!(f, "<Not>"),
             Token::True => write!(f, "<True>"),
-            Token::Colon => write!(f, "<Colon>"),
-            Token::LeftBrace => write!(f, "<LeftBrace>"),
-            Token::RightBrace => write!(f, "<RightBrace>"),
-            Token::LeftParen => write!(f, "<LeftParen>"),
-            Token::RightParen => write!(f, "<RightParen>"),
-            Token::LeftBracket => write!(f, "<LeftBracket>"),
-            Token::RightBracket => write!(f, "<RightBracket>"),
-            Token::Assignment => write!(f, "<<->"),
-            Token::Relop(op) => write!(f, "<{}>", op),
+            Token::Colon => write!(f, "< : >"),
+            Token::SemiColon => write!(f, "< ; >"),
+            Token::LeftBrace => write!(f, "< {{ >"),
+            Token::RightBrace => write!(f, "< }} >"),
+            Token::LeftParen => write!(f, "< ( >"),
+            Token::RightParen => write!(f, "< ) >"),
+            Token::LeftBracket => write!(f, "< [ >"),
+            Token::RightBracket => write!(f, "< ] >"),
+            Token::FatArrow => write!(f, "< => >"),
+            Token::Dot => write!(f, "< . >"),
+            Token::At => write!(f, "< @ >"),
+            Token::Assignment => write!(f, "< <- >"),
+            Token::Relop(op) => write!(f, "< {} >", op),
+            Token::MathOp(op) => write!(f, "< {} >", op),
             Token::Id(num) => write!(f, "<Id, {}>", num),
             Token::Literal(num) => write!(f, "<Literal, {}>", num),
             // }}}
@@ -178,11 +310,19 @@ impl Display for Relop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Relop::EE => write!(f, "="),
-            Relop::NE => write!(f, "!="),
-            Relop::GT => write!(f, ">"),
-            Relop::GE => write!(f, ">="),
             Relop::LT => write!(f, "<"),
             Relop::LE => write!(f, "<="),
+        }
+    }
+}
+
+impl Display for MathOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MathOp::Plus => write!(f, "+"),
+            MathOp::Minus => write!(f, "-"),
+            MathOp::Multiply => write!(f, "*"),
+            MathOp::Divide => write!(f, "/"),
         }
     }
 }
