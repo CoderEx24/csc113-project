@@ -40,6 +40,7 @@ pub enum Token {
     Not,
     True,
     Colon,
+    Comma,
     SemiColon,
     LeftBrace,
     RightBrace,
@@ -157,6 +158,7 @@ impl Lexer {
 
             match letter {
                 ':' => {new_token = Some(Token::Colon); self.advance()},
+                ',' => {new_token = Some(Token::Comma); self.advance()},
                 '(' => {new_token = Some(Token::LeftParen); self.advance()},
                 ')' => {new_token = Some(Token::RightParen); self.advance()},
                 '{' => {new_token = Some(Token::LeftBrace); self.advance()},
@@ -190,7 +192,7 @@ impl Lexer {
                     
                     self.advance();
                 },
-                'a'..='z' | 'A'..='Z' => {
+                'a'..='z' | 'A'..='Z' | '_' => {
                     loop {
                         letter = bytes_slice[self.lookahead] as char;
                         
@@ -259,7 +261,7 @@ impl Lexer {
 
                 }
                 _ => {
-                    panic!("[ERROR] unrecgonized lexem beginning {}\nprobably not ASCII", letter);
+                    panic!("[ERROR] unrecgonized lexem beginning ({}) probably not ASCII", letter);
                 }
             }
 
@@ -299,6 +301,7 @@ impl Display for Token {
             Token::Not => write!(f, "<Not>"),
             Token::True => write!(f, "<True>"),
             Token::Colon => write!(f, "< : >"),
+            Token::Comma => write!(f, "< , >"),
             Token::SemiColon => write!(f, "< ; >"),
             Token::LeftBrace => write!(f, "< {{ >"),
             Token::RightBrace => write!(f, "< }} >"),
