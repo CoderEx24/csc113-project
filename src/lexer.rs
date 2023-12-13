@@ -122,7 +122,6 @@ impl Lexer {
                 self.advance();
                 continue;
             }
-            print!("{}", letter);
             
             if letter == '(' {
                 let mut lookahead = bytes_slice[self.lookahead] as char;
@@ -132,6 +131,7 @@ impl Lexer {
                         letter = bytes_slice[self.lexem_begin] as char;
                         lookahead = bytes_slice[self.lookahead] as char;
 
+
                         if letter == '*' && lookahead == ')' {
                             self.lexem_begin += 2;
                             self.lookahead += 2;
@@ -139,6 +139,19 @@ impl Lexer {
                             break;
                         }
                     }
+
+                    continue;
+                }
+            }
+            else if letter == '-' {
+                let mut lookahead = bytes_slice[self.lookahead] as char;
+                if lookahead == '-' {
+                    while lookahead != '\n' {
+                        self.advance();
+                        lookahead = bytes_slice[self.lookahead] as char;
+                    }
+                    self.advance();
+                    continue;
                 }
             }
 
