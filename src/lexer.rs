@@ -66,6 +66,7 @@ pub struct Lexer {
     lexem_begin_letter: char,
     lookahead_letter: char,
     buffer: String,
+    line_number: usize,
 }
 
 impl Lexer {
@@ -78,6 +79,7 @@ impl Lexer {
             filename: String::from(filename),
             lexem_begin: 0,
             lookahead: 1,
+            line_number: 1,
             buffer: buf,
             lexem_begin_letter: first_letter,
             lookahead_letter: second_letter,
@@ -87,6 +89,10 @@ impl Lexer {
     fn advance(&mut self) {
         self.lexem_begin += 1;
         self.lexem_begin_letter = self.buffer.chars().nth(self.lexem_begin).unwrap_or('\0');
+
+        if self.lexem_begin_letter == '\n' {
+            self.line_number += 1;
+        }
 
         self.advance_lookahead();
     }
@@ -224,7 +230,7 @@ impl Iterator for Lexer {
             },
             'a'..='z' | 'A'..='Z' | '_' => {
                 loop {
-                    if !self.lookahead_letter.is_alphabetic() &&
+                    if !self.lookahead_letter.is_alphanumeric() &&
                             self.lookahead_letter != '_' {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
                         let lexem = String::from(lexem);
@@ -258,7 +264,10 @@ impl Iterator for Lexer {
                         }
 
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                        panic!("[ERROR] invalid id {}, ids can't start with a number", lexem);
+                        panic!("[LEXICAL ERROR] {}:{} |  invalid id {}, ids can't start with a number", 
+                                self.filename,
+                                self.line_number,
+                                lexem);
 
                     }
                     self.advance_lookahead();
@@ -268,7 +277,7 @@ impl Iterator for Lexer {
             '\"' => {
                 loop {
                     if self.lookahead_letter == '\"' {
-                        let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                        let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
                         let lexem = String::from(lexem);
                         new_token = Some(Token::Literal(lexem));
 
