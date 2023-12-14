@@ -224,7 +224,8 @@ impl Iterator for Lexer {
             },
             'a'..='z' | 'A'..='Z' | '_' => {
                 loop {
-                    if !self.lookahead_letter.is_alphabetic() {
+                    if !self.lookahead_letter.is_alphabetic() &&
+                            self.lookahead_letter != '_' {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
                         let lexem = String::from(lexem);
                         new_token = Some(if keywords.contains_key(&lexem[..]) {
@@ -272,6 +273,7 @@ impl Iterator for Lexer {
                         new_token = Some(Token::Literal(lexem));
 
                         self.start_new_lexem();
+                        self.advance();
                         break;
                     }
 
