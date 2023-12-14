@@ -137,8 +137,13 @@ impl Iterator for Lexer {
 
         let mut new_token = None;
 
+        /*println!("Processing letters: {} = {:x}, {} = {:x}", 
+            self.lexem_begin_letter,
+            self.lexem_begin_letter as u16, 
+            self.lookahead_letter,
+            self.lookahead_letter as u16);*/
 
-/* {{{
+// {{{
         while self.lexem_begin_letter == '(' ||
                 self.lexem_begin_letter == '-' ||
                 self.lexem_begin_letter.is_whitespace() {
@@ -152,7 +157,7 @@ impl Iterator for Lexer {
                 self.advance();
 
                 while self.lexem_begin_letter != '*' || self.lookahead_letter != ')' {
-                    println!("Ignoring Comment Content: {}", self.lexem_begin_letter);
+                    //println!("Ignoring Comment Content: {}", self.lexem_begin_letter);
                     self.advance();
                 }
 
@@ -162,33 +167,26 @@ impl Iterator for Lexer {
 
             else if self.lexem_begin_letter == '-' && self.lookahead_letter == '-' {
                 while self.lexem_begin_letter != '\n' {
-                    println!("Ignoring Comment Content: {}", self.lexem_begin_letter);
+                    //println!("Ignoring Comment Content: {}", self.lexem_begin_letter);
                     self.advance();
                 }
 
                 self.advance();
+            }
+            else {
+                break;
             }
 
             while self.lexem_begin_letter.is_whitespace() {
                 self.advance();
             }
         }
-        }}} */
+        // }}}
             
-        while self.lexem_begin_letter.is_whitespace() {
-            self.advance();
-        }
-
         if self.lexem_begin_letter == '\0' {
             return None;
         }
         
-
-        /*println!("Processing letters: {} = {:x}, {} = {:x}", 
-            self.lexem_begin_letter,
-            self.lexem_begin_letter as u16, 
-            self.lookahead_letter,
-            self.lookahead_letter as u16);*/
 
         match self.lexem_begin_letter {
             ':' => {new_token = Some(Token::Colon); self.advance()},
@@ -269,7 +267,7 @@ impl Iterator for Lexer {
             '\"' => {
                 loop {
                     if self.lookahead_letter == '\"' {
-                        let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
+                        let lexem = &self.buffer[self.lexem_begin..self.lookahead];
                         let lexem = String::from(lexem);
                         new_token = Some(Token::Literal(lexem));
 
