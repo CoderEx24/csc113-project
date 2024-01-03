@@ -38,9 +38,8 @@ expr: Id '<-' expr
     | 'false'
     ;
 
-TEXT: ;
-MULTILINE_COMMENT: '(*' TEXT '*)' -> skip;
-COMMENT: '--' TEXT -> skip;
+MULTILINE_COMMENT: '(*' [A-Za-z0-9]+ '*)' -> skip;
+COMMENT: '--' [A-Za-z0-9]+ NEWLINE -> skip;
 NEWLINE: [\n\r]+ -> skip;
 SPACE: [ \t]+ -> skip;
 Id: [A-Za-z_] [A-Za-z0-9_]*;
