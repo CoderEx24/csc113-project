@@ -291,7 +291,10 @@ impl Iterator for Lexer {
 
             }
             _ => {
-                panic!("[ERROR] unrecgonized lexem beginning ({}) probably not ASCII", self.lexem_begin_letter);
+                panic!("[LEXICAL ERROR] {}:{} | unrecgonized lexem beginning ({}) probably not ASCII", 
+                    self.filename,
+                    self.line_number,
+                    self.lexem_begin_letter);
             }
         }
 
