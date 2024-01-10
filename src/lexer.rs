@@ -2,14 +2,14 @@ use std::fmt::Display;
 use std::collections::HashMap;
 use std::fs;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Relop {
     EE,
     LT, 
     LE
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MathOp {
     Plus,
     Minus,
@@ -17,7 +17,7 @@ pub enum MathOp {
     Divide,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token {
     // {{{
     Class,
