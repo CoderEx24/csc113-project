@@ -183,7 +183,6 @@ def generate_lr0_automaton():
 
     for itemset in lr0_itemsets:
         i = lr0_itemsets.index(itemset)
-        lr0_gotos[i] = []
 
         for symbol in chain(terminals, nonterminals):
             new_itemset = lr0_itemset_goto(itemset, symbol)
