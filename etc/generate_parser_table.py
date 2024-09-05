@@ -98,9 +98,9 @@ def follow(symbol):
     if symbol == nonterminals[0]:
         yield '$'
 
-    for (head, prods) in grammar.items():
-        for prod in prods:
-            grammar_symbols = prod.split(' ')
+    for nonterminal in grammar:
+        for production in grammar[nonterminal]:
+            grammar_symbols = production.split(' ')
 
             if symbol not in grammar_symbols:
                 continue
@@ -119,10 +119,10 @@ def follow(symbol):
                         if '' not in gs_first_list:
                             break
                 else:
-                    if head == symbol:
+                    if nonterminal == symbol:
                         continue
 
-                    for i in follow(head):
+                    for i in follow(nonterminal):
                         if i != '':
                             yield i
 
@@ -188,25 +188,64 @@ def generate_lr0_automaton():
                 continue
 
             if new_itemset not in lr0_itemsets:
-                #print(f"Symbl: {symbol} I_{i} = {list(print_itemset(itemset))} => I_{len(itemsets)} = {list(print_itemset(new_itemset))}")
                 lr0_itemsets.append(new_itemset)
 
-            lr0_gotos[i].append(lr0_itemsets.index(new_itemset))
+            lr0_gotos[(i, symbol)] = lr0_itemsets.index(new_itemset)
 
     return lr0_itemsets, lr0_gotos
 
+def generate_lr0_parsing_table(itemsets, gotos):
+    table = {(2, '$'): ["acc"]}
+    productions = []
+
+    for i in grammar.values():
+        productions.extend(i)
+
+    for i in gotos:
+        table[(*i,)] = []
+        table[(i[0], '$')] = []
+
+    for i, itemset in enumerate(itemsets):
+        for (head, production, dot) in itemset:
+            grammar_symbols = production.split(' ')
+            symbol_after_dot = grammar_symbols[dot] if dot < len(grammar_symbols) else None
+
+            if symbol_after_dot is None:
+                for s in follow(head):
+                    print(f"\tfollow of {head} is {s}")
+                    try:
+                        table[(i, s)].append(f"r{productions.index(production)}")
+                    except KeyError:
+                        print(f"attempted to include ({i}, {s}) coming from {head}")
+                        import sys
+                        sys.exit(0)
+
+            elif symbol_after_dot[1:-1] in terminals:
+                j = gotos[(i, symbol_after_dot[1:-1])]
+                table[(i, symbol_after_dot[1:-1])].append(f"s{j}")
+
+
+    for i in table:
+        table[i] = set(table[i])
+    return table
+
+
+
+lr0_itemsets, lr0_gotos = generate_lr0_automaton()
+productions = []
+for i in grammar.values():
+    productions.extend(i)
+
+table = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos)
 
 graphviz_str = "digraph LR0 { rankdir=LR; \n"
 
-lr0_itemsets, lr0_gotos = generate_lr0_automaton()
-
 for i, itemset in enumerate(lr0_itemsets):
     itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
-    graphviz_str += f"I_{i} [shape=square, label=\"{itemset_str}\"]; \n"
+    graphviz_str += f"I_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
 
-for i in lr0_gotos:
-    target_str = reduce(lambda p, a: f"{p}I_{a} ", lr0_gotos[i], '')
-    graphviz_str += f"I_{i} -> {{ {target_str} }};\n"
+for k in lr0_gotos:
+    graphviz_str += f"I_{k[0]} -> I_{lr0_gotos[k]} [headlabel=\"{k[1]}\"];\n"
 
 graphviz_str += "\n}"
 
