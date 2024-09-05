@@ -1,7 +1,7 @@
 grammar = {
-    'program': ["class ';' program", "class ';'"],
+    'program': ["class_prod ';' program", "class_prod ';'"],
 
-    'class': ["'class' 'TYPE' '{' feature_list '}'",
+    'class_prod': ["'class' 'TYPE' '{' feature_list '}'",
               "'class' 'TYPE' 'inherits' 'TYPE' '{' feature_list '}'"],
 
     'feature_list': ["feature ';' feature_list",
@@ -53,7 +53,7 @@ grammar = {
              "'false'"],
 }
 
-nonterminals = grammar.keys()
+nonterminals = list(grammar.keys())
 
 terminals = []
 for prods in grammar.values():
@@ -67,7 +67,6 @@ terminals = set(terminals)
 def first(symbol):
     global grammar, nonterminals, terminals
 
-    print(f"first({symbol})")
     if symbol in terminals or symbol == '':
         yield symbol
 
@@ -85,7 +84,6 @@ def first(symbol):
                 for i in symbol_first_list:
                     yield i
 
-                print(symbol_first_list)
                 if '' not in symbol_first_list:
                     break
 
@@ -95,11 +93,35 @@ def follow(symbol):
     if symbol == '':
         raise "Epsilon has no follow"
 
-    if symbol == grammar.keys()[0]:
+    if symbol == nonterminals[0]:
         yield '$'
 
-    for prods in grammar.values():
+    for (head, prods) in grammar.items():
         for prod in prods:
-            print(prod)
+            grammar_symbols = [i if i in nonterminals else i[1:-1] for i in prod.split(' ')]
 
-print(set(first('expr')))
+            if symbol not in grammar_symbols:
+                continue
+
+            for (idx, s) in enumerate(grammar_symbols):
+                if s != symbol:
+                    continue
+
+                if idx < len(grammar_symbols) - 1:
+                    for gs in grammar_symbols[idx + 1:]:
+                        gs_first_list = list(first(gs))
+                        for i in gs_first_list:
+                            if i != '':
+                                yield i
+
+                        if '' not in gs_first_list:
+                            break
+                else:
+                    if head == symbol:
+                        continue
+
+                    for i in follow(head):
+                        if i != '':
+                            yield i
+
+print(set(follow('formal')))
