@@ -124,4 +124,38 @@ def follow(symbol):
                         if i != '':
                             yield i
 
-print(set(follow('formal')))
+def lr0_itemset_closure(itemset):
+    global grammar, nonterminals, terminals
+
+    new_itemset = [*itemset]
+    for (_, production, dot) in new_itemset:
+        grammar_symbols = production.split(' ')
+        if dot < len(grammar_symbols) and \
+                grammar_symbols[dot] in nonterminals:
+
+            symbol = grammar_symbols[dot]
+            new_entries = [(symbol, prod, 0) for prod in grammar[symbol]]
+            new_entries = set(new_entries) - set(new_itemset)
+            new_itemset.extend(new_entries)
+
+    return new_itemset
+
+def print_itemset(itemset):
+    for (head, production, dot) in itemset:
+        item_str = f'{head} -> '
+        pieces = production.split(' ')
+
+        for p in pieces[:dot]:
+            item_str += f'{p} '
+
+        item_str += '* '
+
+        for p in pieces[dot:]:
+            item_str += f'{p} '
+
+        yield item_str.strip()
+
+itemsets = [[('program_', 'program', 0)]]
+
+c0 = lr0_itemset_closure(itemsets[0])
+print(list(print_itemset(c0)))
