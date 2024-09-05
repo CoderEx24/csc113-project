@@ -172,8 +172,49 @@ def print_itemset(itemset):
 
         yield item_str.strip()
 
-itemsets = [[('program_', 'program', 0)]]
+def generate_lr0_automaton():
+    global grammar, nonterminals, terminals
 
-c0 = lr0_itemset_closure(itemsets[0])
-c0 = lr0_itemset_goto(c0, "class_prod")
-print(list(print_itemset(c0)))
+    lr0_itemsets = [
+        lr0_itemset_closure([('program_', 'program', 0)])
+    ]
+
+    lr0_gotos = {}
+
+    for itemset in lr0_itemsets:
+        i = lr0_itemsets.index(itemset)
+        lr0_gotos[i] = []
+
+        for symbol in chain(terminals, nonterminals):
+            new_itemset = lr0_itemset_goto(itemset, symbol)
+
+            if len(new_itemset) == 0:
+                continue
+
+            if new_itemset not in lr0_itemsets:
+                #print(f"Symbl: {symbol} I_{i} = {list(print_itemset(itemset))} => I_{len(itemsets)} = {list(print_itemset(new_itemset))}")
+                lr0_itemsets.append(new_itemset)
+
+            lr0_gotos[i].append(lr0_itemsets.index(new_itemset))
+
+    return lr0_itemsets, lr0_gotos
+
+
+graphviz_str = "digraph LR0 { rankdir=LR; \n"
+
+lr0_itemsets, lr0_gotos = generate_lr0_automaton()
+
+for i, itemset in enumerate(lr0_itemsets):
+    itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
+    graphviz_str += f"I_{i} [shape=square, label=\"{itemset_str}\"]; \n"
+
+for i in lr0_gotos:
+    target_str = reduce(lambda p, a: f"{p}I_{a} ", lr0_gotos[i], '')
+    graphviz_str += f"I_{i} -> {{ {target_str} }};\n"
+
+graphviz_str += "\n}"
+
+with open("graph.gv", 'w') as g:
+    g.write(graphviz_str)
+
+
