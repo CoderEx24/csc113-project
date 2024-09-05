@@ -1,3 +1,6 @@
+from itertools import chain
+from functools import reduce
+
 grammar = {
     'program': ["class_prod ';' program", "class_prod ';'"],
 
@@ -140,6 +143,20 @@ def lr0_itemset_closure(itemset):
 
     return new_itemset
 
+def lr0_itemset_goto(itemset, grammar_symbol):
+    new_itemset = []
+    for (head, production, dot) in itemset:
+        pieces = production.split(' ')
+        if dot >= len(pieces):
+            break
+        X = pieces[dot]
+        X = X if X in nonterminals else X[1:-1]
+
+        if X == grammar_symbol:
+            new_itemset.append((head, production, dot + 1))
+
+    return lr0_itemset_closure(new_itemset)
+
 def print_itemset(itemset):
     for (head, production, dot) in itemset:
         item_str = f'{head} -> '
@@ -158,4 +175,5 @@ def print_itemset(itemset):
 itemsets = [[('program_', 'program', 0)]]
 
 c0 = lr0_itemset_closure(itemsets[0])
+c0 = lr0_itemset_goto(c0, "class_prod")
 print(list(print_itemset(c0)))
