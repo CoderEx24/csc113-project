@@ -1,7 +1,6 @@
 from itertools import chain
 from functools import reduce
 
-'''
 grammar = {
     'program': ["class_prod ';' program", "class_prod ';'"],
 
@@ -55,13 +54,6 @@ grammar = {
              "'string'",
              "'true'",
              "'false'"],
-}
-'''
-
-grammar = {
-    'E': ["E '+' T", "E '-' T", "T"],
-    'T': ["T '*' F", "T '/' F", "F"],
-    'F': ["'id'", "'(' E ')'"],
 }
 
 nonterminals = list(grammar.keys())
@@ -152,7 +144,7 @@ def lr0_itemset_closure(itemset, grammar_):
 
 def lr0_itemset_goto(itemset, grammar_symbol, grammar_):
     new_itemset = []
-    for (head, production, dot) in itemset:
+    for (head, production, dot) in lr0_itemset_closure(itemset, grammar_):
         pieces = production.split(' ')
         if dot >= len(pieces):
             continue
@@ -160,7 +152,7 @@ def lr0_itemset_goto(itemset, grammar_symbol, grammar_):
         if pieces[dot] == grammar_symbol:
             new_itemset.append((head, production, dot + 1))
 
-    return lr0_itemset_closure(new_itemset, grammar_)
+    return new_itemset
 
 def print_itemset(itemset):
     for (head, production, dot) in itemset:
@@ -181,7 +173,7 @@ def generate_lr0_automaton(grammar_):
     grammar, nonterminals, terminals = grammar_
 
     lr0_itemsets = [
-        lr0_itemset_closure([(f'{nonterminals[0]}_', nonterminals[0], 0)], grammar_)
+        [(f'{nonterminals[0]}_', nonterminals[0], 0)]
     ]
 
     lr0_gotos = {}
