@@ -200,10 +200,12 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
     grammar, nonterminals, terminals = grammar_
 
     table = {(2, '$'): ["acc"]}
+    nonterminal_gotos = [None] * len(itemsets)
     productions = []
 
-    for i in grammar.values():
-        productions.extend(i)
+    for k in grammar:
+        for production in grammar[k]:
+            productions.append((k, production))
 
     for i in range(len(itemsets)):
         for s in terminals:
@@ -217,16 +219,20 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
 
             if symbol_after_dot is None:
                 for s in follow(head, grammar_):
-                    table[(i, s)].append(f"r{productions.index(production)}")
+                    table[(i, s)].append(f"r{productions.index((head, production))}")
 
             elif symbol_after_dot in terminals:
                 j = gotos[(i, symbol_after_dot)]
                 table[(i, symbol_after_dot)].append(f"s{j}")
 
+            elif nonterminal_gotos[i] is None:
+                goto_state = lr0_itemset_goto(itemset, symbol_after_dot, grammar_)
+                j = itemsets.index(goto_state)
+                nonterminal_gotos[i] = j
 
     for i in table:
         table[i] = sorted(set(table[i]))
-    return table
+    return table, nonterminal_gotos
 
 lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 productions = []
@@ -234,7 +240,7 @@ productions = []
 for i in grammar[0].values():
     productions.extend(i)
 
-table = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
+table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
 
 for k in table:
     if len(table[k]) > 0:
