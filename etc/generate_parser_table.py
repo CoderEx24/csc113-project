@@ -67,13 +67,11 @@ for prods in grammar.values():
 
 terminals = set(terminals)
 
-def first(symbol, __cache=[]):
+def first(symbol):
     global grammar, nonterminals, terminals
 
     if symbol in terminals or symbol == '':
-        if symbol not in __cache:
-            __cache.append(symbol)
-            yield symbol
+        yield symbol
 
     else:
         for production in grammar[symbol]:
@@ -81,7 +79,7 @@ def first(symbol, __cache=[]):
                 if prod_symbol == symbol:
                     break
 
-                symbol_first_list = list(first(prod_symbol, __cache))
+                symbol_first_list = list(first(prod_symbol))
 
                 for i in symbol_first_list:
                     yield i
@@ -111,7 +109,7 @@ def follow(symbol):
 
                 if idx < len(grammar_symbols) - 1:
                     for gs in grammar_symbols[idx + 1:]:
-                        gs_first_list = list(first(gs))
+                        gs_first_list = list(set(first(gs)))
                         for i in gs_first_list:
                             if i != '':
                                 yield i
@@ -147,7 +145,7 @@ def lr0_itemset_goto(itemset, grammar_symbol):
     for (head, production, dot) in itemset:
         pieces = production.split(' ')
         if dot >= len(pieces):
-            break
+            continue
 
         if pieces[dot] == grammar_symbol:
             new_itemset.append((head, production, dot + 1))
