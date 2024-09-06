@@ -22,15 +22,17 @@ grammar = {
     'expr_list': ["expr ',' expr_list", "expr"],
 
     'block_list': ["expr ';' block_list", "expr ';'"],
-    'optional_assign': ["'<-' expr", ""],
-    'assign_list': ["'ID' ':' 'TYPE' optional_assign ',' assign_list",
-                    "'ID' ':' 'TYPE' optional_assign"],
+
+    'assign_list': ["'ID' ':' 'TYPE' '<-' expr ',' assign_list",
+                    "'ID' ':' 'TYPE' ',' assign_list",
+                    "'ID' ':' 'TYPE' '<-' expr",
+                    "'ID' ':' 'TYPE'"],
     'case_list': ["'ID' ':' 'TYPE' '=>' expr ';' case_list",
                   "'ID' ':' 'TYPE' '=>' expr ';'"],
 
-    'optional_cast': ["'@' 'TYPE'", ""],
     'expr': ["'ID' '<-' expr",
-             "expr optional_cast '.' 'ID' '(' expr_list ')'",
+             "expr '.' 'ID' '(' expr_list ')'",
+             "expr '@' 'TYPE' '.' 'ID' '(' expr_list ')'",
              "'ID' '(' expr_list ')'",
              "'if' expr 'then' expr 'else' expr 'fi'",
              "'while' expr 'loop' expr 'pool'",
