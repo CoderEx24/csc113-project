@@ -234,13 +234,93 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         table[i] = sorted(set(table[i]))
     return table, nonterminal_gotos
 
+def write_table(parsing_table, nonterminal_gotos, productions):
+    # {{{ Token names table
+    token_name_table = {
+        "$": 'Token::EndOfInput',
+        "':'": 'Token::Colon',
+        "','": 'Token::Comma',
+        "';'": 'Token::SemiColon',
+        "'{'": 'Token::LeftBrace',
+        "'}'": 'Token::RightBrace',
+        "'('": 'Token::LeftParen',
+        "')'": 'Token::RightParen',
+        "'['": 'Token::LeftBracket',
+        "']'": 'Token::RightBracket',
+        "'=>'": 'Token::FatArrow',
+        "'.'": 'Token::Dot',
+        "'@'": 'Token::At',
+        "'~'": 'Token::Not',
+        "'+'": 'Token::MathOp(MathOp::Plus)',
+        "'-'": 'Token::MathOp(MathOp::Minus)',
+        "'*'": 'Token::MathOp(MathOp::Multiply)',
+        "'/'": 'Token::MathOp(MathOp::Divide)',
+        "'<-'": 'Token::Assignment',
+        "'<='": 'Token::Relop(Relop::LE)',
+        "'<'": 'Token::Relop(Relop::LT)',
+        "'='": 'Token::Relop(Relop::EE)',
+        "'ID'": 'Token::Id(_)',
+        "'TYPE'": 'Token::Id(_)',
+        "'integer'": 'Token::Literal(_)',
+        "'string'": 'Token::Literal(_)',
+        "'class'": 'Token::Class',
+        "'else'": 'Token::Else',
+        "'false'": 'Token::False',
+        "'fi'": 'Token::Fi',
+        "'if'": 'Token::If',
+        "'in'": 'Token::In',
+        "'inherits'": 'Token::Inherits',
+        "'isvoid'": 'Token::Isvoid',
+        "'let'": 'Token::Let',
+        "'loop'": 'Token::Loop',
+        "'pool'": 'Token::Pool',
+        "'then'": 'Token::Then',
+        "'while'": 'Token::While',
+        "'case'": 'Token::Case',
+        "'esac'": 'Token::Esac',
+        "'new'": 'Token::New',
+        "'of'": 'Token::Of',
+        "'not'": 'Token::Not',
+        "'true'": 'Token::True',
+    }
+    # }}} 
+
+    with open("table.txt", "w") as f:
+        for k in parsing_table:
+            if len(parsing_table[k]) == 0:
+                continue
+
+            table_entry = f"({k[0]}, {token_name_table[k[1]]}) => "
+
+            for entry in parsing_table[k]:
+                if entry[0] == 's':
+                    table_entry += f"Action::Shift({entry[1:]}), "
+                elif entry[0] == 'r':
+                    idx = int(entry[1:])
+                    prod_len = productions[idx][1].count(' ') + 1
+                    table_entry += f"Action::Reduce({idx}, {prod_len}), "
+                elif entry == "acc":
+                    table_entry += "Action::Accept, "
+
+                table_entry = table_entry.rstrip(", ")
+                f.write(table_entry)
+                f.write('\n')
+
+
+
 lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 productions = []
 
-for i in grammar[0].values():
-    productions.extend(i)
+for k in grammar[0]:
+    for production in grammar[0][k]:
+        productions.append((k, production))
 
 table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
+
+write_table(table, gotos, productions)
+
+import sys
+sys.exit(0)
 
 for k in table:
     if len(table[k]) > 0:
