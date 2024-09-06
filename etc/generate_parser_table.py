@@ -1,6 +1,7 @@
 from itertools import chain
 from functools import reduce
 
+'''
 grammar = {
     'program': ["class_prod ';' program", "class_prod ';'"],
 
@@ -55,6 +56,13 @@ grammar = {
              "'true'",
              "'false'"],
 }
+'''
+
+grammar = {
+    'E': ["E '+' T", "E '-' T", "T"],
+    'T': ["T '*' F", "T '/' F", "F"],
+    'F': ["'id'", "'(' E ')'"],
+}
 
 nonterminals = list(grammar.keys())
 
@@ -67,8 +75,10 @@ for prods in grammar.values():
 
 terminals = set(terminals)
 
-def first(symbol):
-    global grammar, nonterminals, terminals
+grammar = (grammar, nonterminals, terminals)
+
+def first(symbol, grammar_):
+    grammar, nonterminals, terminals = grammar_
 
     if symbol in terminals or symbol == '':
         yield symbol
@@ -87,8 +97,8 @@ def first(symbol):
                 if '' not in symbol_first_list:
                     break
 
-def follow(symbol):
-    global grammar, nonterminals, terminals
+def follow(symbol, grammar_):
+    grammar, nonterminals, terminals = grammar_
 
     if symbol == '':
         raise "Epsilon has no follow"
@@ -109,7 +119,7 @@ def follow(symbol):
 
                 if idx < len(grammar_symbols) - 1:
                     for gs in grammar_symbols[idx + 1:]:
-                        gs_first_list = list(set(first(gs)))
+                        gs_first_list = list(set(first(gs, grammar_)))
                         for i in gs_first_list:
                             if i != '':
                                 yield i
@@ -120,12 +130,12 @@ def follow(symbol):
                     if nonterminal == symbol:
                         continue
 
-                    for i in follow(nonterminal):
+                    for i in follow(nonterminal, grammar_):
                         if i != '':
                             yield i
 
-def lr0_itemset_closure(itemset):
-    global grammar, nonterminals, terminals
+def lr0_itemset_closure(itemset, grammar_):
+    grammar, nonterminals, terminals = grammar_
 
     new_itemset = [*itemset]
     for (_, production, dot) in new_itemset:
@@ -140,7 +150,7 @@ def lr0_itemset_closure(itemset):
 
     return new_itemset
 
-def lr0_itemset_goto(itemset, grammar_symbol):
+def lr0_itemset_goto(itemset, grammar_symbol, grammar_):
     new_itemset = []
     for (head, production, dot) in itemset:
         pieces = production.split(' ')
@@ -150,7 +160,7 @@ def lr0_itemset_goto(itemset, grammar_symbol):
         if pieces[dot] == grammar_symbol:
             new_itemset.append((head, production, dot + 1))
 
-    return lr0_itemset_closure(new_itemset)
+    return lr0_itemset_closure(new_itemset, grammar_)
 
 def print_itemset(itemset):
     for (head, production, dot) in itemset:
@@ -167,11 +177,11 @@ def print_itemset(itemset):
 
         yield item_str.strip()
 
-def generate_lr0_automaton():
-    global grammar, nonterminals, terminals
+def generate_lr0_automaton(grammar_):
+    grammar, nonterminals, terminals = grammar_
 
     lr0_itemsets = [
-        lr0_itemset_closure([(f'{nonterminals[0]}_', nonterminals[0],0)])
+        lr0_itemset_closure([(f'{nonterminals[0]}_', nonterminals[0], 0)], grammar_)
     ]
 
     lr0_gotos = {}
@@ -179,8 +189,8 @@ def generate_lr0_automaton():
     for itemset in lr0_itemsets:
         i = lr0_itemsets.index(itemset)
 
-        for symbol in chain(terminals, nonterminals):
-            new_itemset = lr0_itemset_goto(itemset, symbol)
+        for symbol in chain(nonterminals, terminals):
+            new_itemset = lr0_itemset_goto(itemset, symbol, grammar_)
 
             if len(new_itemset) == 0:
                 continue
@@ -192,7 +202,9 @@ def generate_lr0_automaton():
 
     return lr0_itemsets, lr0_gotos
 
-def generate_lr0_parsing_table(itemsets, gotos):
+def generate_lr0_parsing_table(itemsets, gotos, grammar_):
+    grammar, nonterminals, terminals = grammar_
+
     table = {(2, '$'): ["acc"]}
     productions = []
 
@@ -210,7 +222,7 @@ def generate_lr0_parsing_table(itemsets, gotos):
             symbol_after_dot = grammar_symbols[dot] if dot < len(grammar_symbols) else None
 
             if symbol_after_dot is None:
-                for s in follow(head):
+                for s in follow(head, grammar_):
                     table[(i, s)].append(f"r{productions.index(production)}")
 
             elif symbol_after_dot in terminals:
@@ -222,13 +234,17 @@ def generate_lr0_parsing_table(itemsets, gotos):
         table[i] = sorted(set(table[i]))
     return table
 
-lr0_itemsets, lr0_gotos = generate_lr0_automaton()
+lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 productions = []
 
-for i in grammar.values():
+for i in grammar[0].values():
     productions.extend(i)
 
-table = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos)
+table = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
+
+for k in table:
+    if len(table[k]) > 0:
+        print(f"{k} -> {table[k]}")
 
 for k in table:
     if len(table[k]) > 1:
