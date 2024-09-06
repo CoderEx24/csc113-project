@@ -255,16 +255,28 @@ for k in table:
 conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
 conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
 conflicting_states = sorted(set(conflicting_states))
-print(f"{conflicting_states = }")
+print(f"{conflicting_states = }\nn={len(conflicting_states)}")
 
-graphviz_str = "digraph LR0 { rankdir=LR; \n"
+graphviz_str = """digraph LR0 {
+    splines=ortho;
+    randdir=LR;
+"""
 
 for i, itemset in enumerate(lr0_itemsets):
     itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
     graphviz_str += f"\tI_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
 
+inverted_gotos = {}
 for i, sym in lr0_gotos:
-    graphviz_str += f"\tI_{i} -> I_{lr0_gotos[(i, sym)]} [headlabel=\"{sym}\"];\n"
+    j = lr0_gotos[(i, sym)]
+    if (j, sym) not in inverted_gotos:
+        inverted_gotos[(j, sym)] = []
+
+    inverted_gotos[(j, sym)].append(i)
+
+for i, sym in inverted_gotos:
+    source_str = reduce(lambda acc, p: f"{acc}I_{p} ", inverted_gotos[(i, sym)], '')
+    graphviz_str += f"\t{{ {source_str} }} -> I_{i} ;\n"
 
 graphviz_str += "\n}"
 
