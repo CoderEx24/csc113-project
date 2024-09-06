@@ -81,7 +81,7 @@ def first(symbol, grammar_):
                 if prod_symbol == symbol:
                     break
 
-                symbol_first_list = list(first(prod_symbol))
+                symbol_first_list = list(first(prod_symbol, grammar_))
 
                 for i in symbol_first_list:
                     yield i
