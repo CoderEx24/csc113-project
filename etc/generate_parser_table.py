@@ -171,7 +171,7 @@ def generate_lr0_automaton():
     global grammar, nonterminals, terminals
 
     lr0_itemsets = [
-        lr0_itemset_closure([('program_', 'program', 0)])
+        lr0_itemset_closure([(f'{nonterminals[0]}_', nonterminals[0],0)])
     ]
 
     lr0_gotos = {}
@@ -199,9 +199,10 @@ def generate_lr0_parsing_table(itemsets, gotos):
     for i in grammar.values():
         productions.extend(i)
 
-    for i in gotos:
-        table[(*i,)] = []
-        table[(i[0], '$')] = []
+    for i in range(len(itemsets)):
+        for s in terminals:
+            table[(i, s)] = []
+        table[(i, '$')] = []
 
     for i, itemset in enumerate(itemsets):
         for (head, production, dot) in itemset:
@@ -210,40 +211,50 @@ def generate_lr0_parsing_table(itemsets, gotos):
 
             if symbol_after_dot is None:
                 for s in follow(head):
-                    print(f"\tfollow of {head} is {s}")
-                    try:
-                        table[(i, s)].append(f"r{productions.index(production)}")
-                    except KeyError:
-                        print(f"attempted to include ({i}, {s}) coming from {head}")
-                        import sys
-                        sys.exit(0)
+                    table[(i, s)].append(f"r{productions.index(production)}")
 
-            elif symbol_after_dot[1:-1] in terminals:
-                j = gotos[(i, symbol_after_dot[1:-1])]
-                table[(i, symbol_after_dot[1:-1])].append(f"s{j}")
+            elif symbol_after_dot in terminals:
+                j = gotos[(i, symbol_after_dot)]
+                table[(i, symbol_after_dot)].append(f"s{j}")
 
 
     for i in table:
-        table[i] = set(table[i])
+        table[i] = sorted(set(table[i]))
     return table
-
-
 
 lr0_itemsets, lr0_gotos = generate_lr0_automaton()
 productions = []
+
 for i in grammar.values():
     productions.extend(i)
 
 table = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos)
 
+for k in table:
+    if len(table[k]) > 1:
+        actions = list(table[k])
+        actions_str = ''
+        for action in actions:
+            if action[0] == 'r':
+                actions_str += f"reduce by {productions[int(action[1:])]}, "
+            elif action[0] == 's':
+                actions_str += f"shift {action[1:]}, "
+
+        print(f"{k} -> {actions_str[:-2]}")
+
+conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
+conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
+conflicting_states = sorted(set(conflicting_states))
+print(f"{conflicting_states = }")
+
 graphviz_str = "digraph LR0 { rankdir=LR; \n"
 
 for i, itemset in enumerate(lr0_itemsets):
     itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
-    graphviz_str += f"I_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
+    graphviz_str += f"\tI_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
 
-for k in lr0_gotos:
-    graphviz_str += f"I_{k[0]} -> I_{lr0_gotos[k]} [headlabel=\"{k[1]}\"];\n"
+for i, sym in lr0_gotos:
+    graphviz_str += f"\tI_{i} -> I_{lr0_gotos[(i, sym)]} [headlabel=\"{sym}\"];\n"
 
 graphviz_str += "\n}"
 
