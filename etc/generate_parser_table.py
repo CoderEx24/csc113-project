@@ -199,7 +199,7 @@ def generate_lr0_automaton(grammar_):
 def generate_lr0_parsing_table(itemsets, gotos, grammar_):
     grammar, nonterminals, terminals = grammar_
 
-    table = {(2, '$'): ["acc"]}
+    table = {(1, '$'): ["acc"]}
     nonterminal_gotos = [None] * len(itemsets)
     productions = []
 
@@ -317,26 +317,12 @@ for k in grammar[0]:
 
 table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
 
+import pickle
+
+with open('lr0_automaton.bin', 'wb') as f:
+    pickle.dump((lr0_itemsets, lr0_gotos), f)
+
 write_table(table, gotos, productions)
-
-import sys
-sys.exit(0)
-
-for k in table:
-    if len(table[k]) > 0:
-        print(f"{k} -> {table[k]}")
-
-for k in table:
-    if len(table[k]) > 1:
-        actions = list(table[k])
-        actions_str = ''
-        for action in actions:
-            if action[0] == 'r':
-                actions_str += f"reduce by {productions[int(action[1:])]}, "
-            elif action[0] == 's':
-                actions_str += f"shift {action[1:]}, "
-
-        print(f"{k} -> {actions_str[:-2]}")
 
 conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
 conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
