@@ -302,9 +302,9 @@ def write_table(parsing_table, nonterminal_gotos, productions):
                 elif entry == "acc":
                     table_entry += "Action::Accept, "
 
-                table_entry = table_entry.rstrip(", ")
-                f.write(table_entry)
-                f.write('\n')
+            table_entry = table_entry.rstrip(", ")
+            f.write(table_entry)
+            f.write('\n')
 
 
 
