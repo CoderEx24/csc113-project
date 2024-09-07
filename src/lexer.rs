@@ -55,7 +55,9 @@ pub enum Token {
     Relop(Relop),
     MathOp(MathOp),
     Id(String),
-    Literal(String),
+    Type(String),
+    Integer(i128),
+    StringLiteral(String),
     // }}}
 }
 
@@ -149,7 +151,7 @@ impl Iterator for Lexer {
             self.lookahead_letter,
             self.lookahead_letter as u16);*/
 
-// {{{
+// {{{ Processing Comments
         while self.lexem_begin_letter == '(' ||
                 self.lexem_begin_letter == '-' ||
                 self.lexem_begin_letter.is_whitespace() {
@@ -214,8 +216,7 @@ impl Iterator for Lexer {
             '<' => {
                 match self.lookahead_letter {
                     '-' => { new_token = Some(Token::Assignment); self.advance(); }
-                    '=' => { new_token = Some(Token::Relop(Relop::LE)); self.advance(); }
-                    _ => new_token = Some(Token::Relop(Relop::LT)),
+                    '=' => { new_token = Some(Token::Relop(Relop::LE)); self.advance(); } _ => new_token = Some(Token::Relop(Relop::LT)),
                 }
 
                 self.advance();
@@ -233,13 +234,19 @@ impl Iterator for Lexer {
                     if !self.lookahead_letter.is_alphanumeric() &&
                             self.lookahead_letter != '_' {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                        let lexem = String::from(lexem);
-                        new_token = Some(if keywords.contains_key(&lexem[..]) {
-                            keywords.get(&lexem[..]).unwrap().clone()
-                        }
-                        else {
-                            Token::Id(lexem)
-                        });
+                        let lexem = String::from(lexem); 
+
+                        // TODO: This is stupid!
+                        let type_token = Token::Type(lexem.clone());
+                        let id_token = Token::Id(lexem.clone());
+
+                        new_token = keywords.get(&lexem[..]).or_else(
+                            || if lexem.chars().nth(0).unwrap().is_ascii_uppercase() { 
+                                Some(&type_token) 
+                            } else { 
+                                Some(&id_token) 
+                            }
+                        ).map(|o| o.to_owned());
 
                         self.start_new_lexem();
                         break;
@@ -253,7 +260,10 @@ impl Iterator for Lexer {
                     if !self.lookahead_letter.is_alphanumeric() {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
                         let lexem = String::from(lexem);
-                        new_token = Some(Token::Literal(lexem));
+                        let lexem = i128::from_str_radix(&lexem[..], 10)
+                            .expect(format!("[LEXEICAL ERROR] failed to convert {} into integer", lexem).as_str());
+                        new_token = Some(Token::Integer(lexem));
+
 
                         self.start_new_lexem();
                         break;
@@ -279,7 +289,7 @@ impl Iterator for Lexer {
                     if self.lookahead_letter == '\"' {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
                         let lexem = String::from(lexem);
-                        new_token = Some(Token::Literal(lexem));
+                        new_token = Some(Token::StringLiteral(lexem));
 
                         self.start_new_lexem();
                         self.advance();
@@ -340,8 +350,10 @@ impl Display for Token {
             Token::Assignment => write!(f, "< <- >"),
             Token::Relop(op) => write!(f, "< {} >", op),
             Token::MathOp(op) => write!(f, "< {} >", op),
-            Token::Id(num) => write!(f, "<Id, {}>", num),
-            Token::Literal(num) => write!(f, "<Literal, {}>", num),
+            Token::Id(s) => write!(f, "<Id, {}>", s),
+            Token::Type(s) => write!(f, "<Type, {}>", s),
+            Token::Integer(i) => write!(f, "<Integer, {}>", i),
+            Token::StringLiteral(s) => write!(f, "<StringLiteral, {}>", s),
             // }}}
         }
     }
@@ -367,3 +379,5 @@ impl Display for MathOp {
         }
     }
 }
+
+
