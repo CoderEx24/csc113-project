@@ -261,7 +261,7 @@ def write_table(parsing_table, nonterminal_gotos, grammar_):
         "'=>'": 'Token::FatArrow',
         "'.'": 'Token::Dot',
         "'@'": 'Token::At',
-        "'~'": 'Token::Not',
+        "'~'": 'Token::Complement',
         "'+'": 'Token::MathOp(MathOp::Plus)',
         "'-'": 'Token::MathOp(MathOp::Minus)',
         "'*'": 'Token::MathOp(MathOp::Multiply)',
