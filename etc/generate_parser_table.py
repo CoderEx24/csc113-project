@@ -69,6 +69,11 @@ for prods in grammar.values():
 
 terminals = set(terminals)
 
+productions = []
+for k in grammar:
+    for prod in grammar[k]:
+        productions.append((k, prod))
+
 grammar = (grammar, nonterminals, terminals)
 
 def first(symbol, grammar_):
@@ -309,11 +314,6 @@ def write_table(parsing_table, nonterminal_gotos, productions):
 
 
 lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
-productions = []
-
-for k in grammar[0]:
-    for production in grammar[0][k]:
-        productions.append((k, production))
 
 table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
 
