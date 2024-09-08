@@ -88,7 +88,7 @@ def first(symbol, grammar_):
                 if prod_symbol == symbol:
                     break
 
-                symbol_first_list = list(first(prod_symbol, grammar_))
+                symbol_first_list = set(first(prod_symbol, grammar_))
 
                 for i in symbol_first_list:
                     yield i
@@ -118,7 +118,7 @@ def follow(symbol, grammar_):
 
                 if idx < len(grammar_symbols) - 1:
                     for gs in grammar_symbols[idx + 1:]:
-                        gs_first_list = list(set(first(gs, grammar_)))
+                        gs_first_list = set(first(gs, grammar_))
                         for i in gs_first_list:
                             if i != '':
                                 yield i
@@ -186,10 +186,10 @@ def generate_lr0_automaton(grammar_):
     lr0_gotos = {}
 
     for itemset in lr0_itemsets:
-        i = lr0_itemsets.index(itemset)
 
-        for symbol in chain(nonterminals, terminals):
+        for symbol in chain(nonterminals, terminals, '$'):
             new_itemset = lr0_itemset_goto(itemset, symbol, grammar_)
+            i = lr0_itemsets.index(itemset)
 
             if len(new_itemset) == 0:
                 continue
@@ -204,7 +204,7 @@ def generate_lr0_automaton(grammar_):
 def generate_lr0_parsing_table(itemsets, gotos, grammar_):
     grammar, nonterminals, terminals = grammar_
 
-    table = {(1, '$'): ["acc"]}
+    table = {}
     nonterminal_gotos = [None] * len(itemsets)
     productions = []
 
@@ -216,6 +216,8 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         for s in terminals:
             table[(i, s)] = []
         table[(i, '$')] = []
+
+    table[(1, '$')] = ["acc"]
 
     for i, itemset in enumerate(itemsets):
         for (head, production, dot) in itemset:
