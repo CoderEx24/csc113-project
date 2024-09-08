@@ -53,6 +53,7 @@ grammar = {
              "'~' expr",
              "expr '<' expr",
              "expr '<-' expr",
+             "expr '<=' expr",
              "expr '=' expr",
              "'not' expr",
              "'(' expr ')'",
