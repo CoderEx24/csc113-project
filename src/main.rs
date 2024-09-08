@@ -1,6 +1,8 @@
 mod lexer;
+mod parser;
 
 use lexer::Lexer;
+use parser::Parser;
 use std::env::args;
 
 fn main() {
@@ -12,8 +14,8 @@ fn main() {
 
     let filename = &args[1];
 
-    let mut lexer = Lexer::for_file(filename);
-    lexer.analyse();
+    let lexer = Lexer::for_file(filename);
+    let mut parser = Parser::new(lexer);
 
-    lexer.get_tokens().iter().for_each(|t| println!("{}", t));
+    parser.parse();
 }
