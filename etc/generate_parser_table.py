@@ -244,7 +244,8 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         table[i] = sorted(set(table[i]))
     return table, nonterminal_gotos
 
-def write_table(parsing_table, nonterminal_gotos, nonterminls, productions):
+def write_table(parsing_table, nonterminal_gotos, grammar, productions):
+    nonterminals = grammar[1]
     # {{{ Token names table
     token_name_table = {
         "$": 'Token::EndOfInput',
@@ -317,7 +318,12 @@ def write_table(parsing_table, nonterminal_gotos, nonterminls, productions):
 
     with open("gotos.txt", 'w') as f:
         for k in filter(lambda k: nonterminal_gotos[k] is not None, nonterminal_gotos):
-            f.write(f"({k[0]}, {nonterminals.index(k[1])}) => {nonterminal_gotos[k]},\n")
+            f.write(f"({k[0]}, {nonterminals.index(k[1])}) => Ok({nonterminal_gotos[k]}),\n")
+
+    with open("productions.txt", 'w') as f:
+        for k in grammar:
+            for p in grammar[k]:
+                f.write(f"{productions.index(p)} => Ok(\"{k} -> {p}\")")
 
 
 
@@ -330,7 +336,7 @@ import pickle
 with open('lr0_automaton.bin', 'wb') as f:
     pickle.dump((lr0_itemsets, lr0_gotos), f)
 
-write_table(table, gotos, nonterminals, productions)
+write_table(table, gotos, grammar, productions)
 
 conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
 conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
