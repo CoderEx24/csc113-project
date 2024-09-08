@@ -205,7 +205,7 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
     grammar, nonterminals, terminals = grammar_
 
     table = {}
-    nonterminal_gotos = [None] * len(itemsets)
+    nonterminal_gotos = {}
     productions = []
 
     for k in grammar:
@@ -216,6 +216,9 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         for s in terminals:
             table[(i, s)] = []
         table[(i, '$')] = []
+
+        for s in nonterminals:
+            nonterminal_gotos[(i, s)] = None
 
     table[(1, '$')] = ["acc"]
 
@@ -232,16 +235,16 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
                 j = gotos[(i, symbol_after_dot)]
                 table[(i, symbol_after_dot)].append(f"s{j}")
 
-            elif nonterminal_gotos[i] is None:
+            else:
                 goto_state = lr0_itemset_goto(itemset, symbol_after_dot, grammar_)
                 j = itemsets.index(goto_state)
-                nonterminal_gotos[i] = j
+                nonterminal_gotos[(i, symbol_after_dot)] = j
 
     for i in table:
         table[i] = sorted(set(table[i]))
     return table, nonterminal_gotos
 
-def write_table(parsing_table, nonterminal_gotos, productions):
+def write_table(parsing_table, nonterminal_gotos, nonterminls, productions):
     # {{{ Token names table
     token_name_table = {
         "$": 'Token::EndOfInput',
@@ -292,7 +295,7 @@ def write_table(parsing_table, nonterminal_gotos, productions):
     }
     # }}} 
 
-    with open("table.txt", "w") as f:
+    with open("actions.txt", "w") as f:
         for k in parsing_table:
             if len(parsing_table[k]) == 0:
                 continue
@@ -312,6 +315,10 @@ def write_table(parsing_table, nonterminal_gotos, productions):
             f.write(table_entry)
             f.write('\n')
 
+    with open("gotos.txt", 'w') as f:
+        for k in filter(lambda k: nonterminal_gotos[k] is not None, nonterminal_gotos):
+            f.write(f"({k[0]}, {nonterminals.index(k[1])}) => {nonterminal_gotos[k]},\n")
+
 
 
 lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
@@ -323,7 +330,7 @@ import pickle
 with open('lr0_automaton.bin', 'wb') as f:
     pickle.dump((lr0_itemsets, lr0_gotos), f)
 
-write_table(table, gotos, productions)
+write_table(table, gotos, nonterminals, productions)
 
 conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
 conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
