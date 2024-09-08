@@ -79,10 +79,10 @@ for k in grammar:
     for prod in grammar[k]:
         productions.append((k, prod))
 
-grammar = (grammar, nonterminals, terminals)
+grammar = (grammar, nonterminals, terminals, productions)
 
 def first(symbol, grammar_):
-    grammar, nonterminals, terminals = grammar_
+    grammar, nonterminals, terminals, _ = grammar_
 
     if symbol in terminals or symbol == '':
         yield symbol
@@ -102,7 +102,7 @@ def first(symbol, grammar_):
                     break
 
 def follow(symbol, grammar_):
-    grammar, nonterminals, terminals = grammar_
+    grammar, nonterminals, terminals, _ = grammar_
 
     if symbol == '':
         raise "Epsilon has no follow"
@@ -139,7 +139,7 @@ def follow(symbol, grammar_):
                             yield i
 
 def lr0_itemset_closure(itemset, grammar_):
-    grammar, nonterminals, terminals = grammar_
+    grammar, nonterminals, terminals, _ = grammar_
 
     new_itemset = [*itemset]
     for (_, production, dot) in new_itemset:
@@ -182,7 +182,7 @@ def print_itemset(itemset):
         yield item_str.strip()
 
 def generate_lr0_automaton(grammar_):
-    grammar, nonterminals, terminals = grammar_
+    grammar, nonterminals, terminals, _ = grammar_
 
     lr0_itemsets = [
         [(f'{nonterminals[0]}_', nonterminals[0], 0)]
@@ -207,15 +207,10 @@ def generate_lr0_automaton(grammar_):
     return lr0_itemsets, lr0_gotos
 
 def generate_lr0_parsing_table(itemsets, gotos, grammar_):
-    grammar, nonterminals, terminals = grammar_
+    grammar, nonterminals, terminals, productions = grammar_
 
     table = {}
     nonterminal_gotos = {}
-    productions = []
-
-    for k in grammar:
-        for production in grammar[k]:
-            productions.append((k, production))
 
     for i in range(len(itemsets)):
         for s in terminals:
@@ -249,8 +244,8 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         table[i] = sorted(set(table[i]))
     return table, nonterminal_gotos
 
-def write_table(parsing_table, nonterminal_gotos, grammar, productions):
-    nonterminals = grammar[1]
+def write_table(parsing_table, nonterminal_gotos, grammar_):
+    grammar, nonterminals, _, productions = grammar_
     # {{{ Token names table
     token_name_table = {
         "$": 'Token::EndOfInput',
@@ -326,52 +321,64 @@ def write_table(parsing_table, nonterminal_gotos, grammar, productions):
             f.write(f"({k[0]}, {nonterminals.index(k[1])}) => Ok({nonterminal_gotos[k]}),\n")
 
     with open("productions.txt", 'w') as f:
-        for k in grammar:
-            for p in grammar[k]:
-                f.write(f"{productions.index(p)} => Ok(\"{k} -> {p}\")")
+        for i, (k, p) in enumerate(productions):
+                f.write(f"{i} => Ok(\"{k} -> {p}\"),\n")
+
+def write_graph(lr0_itemsets, lr0_gotos):
+    graphviz_str = """digraph LR0 {
+        splines=ortho;
+        randdir=LR;
+    """
+
+    for i, itemset in enumerate(lr0_itemsets):
+        itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
+        graphviz_str += f"\tI_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
+
+    inverted_gotos = {}
+    for i, sym in lr0_gotos:
+        j = lr0_gotos[(i, sym)]
+        if (j, sym) not in inverted_gotos:
+            inverted_gotos[(j, sym)] = []
+
+        inverted_gotos[(j, sym)].append(i)
+
+    for i, sym in inverted_gotos:
+        source_str = reduce(lambda acc, p: f"{acc}I_{p} ", inverted_gotos[(i, sym)], '')
+        graphviz_str += f"\t{{ {source_str} }} -> I_{i} ;\n"
+
+    graphviz_str += "\n}"
+
+    with open("graph.gv", 'w') as g:
+        g.write(graphviz_str)
 
 
 
-lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 
-table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
+if __name__ == '__main__':
+    import argparse
+    lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 
-import pickle
+    with open('lr0_automaton.bin', 'wb') as f:
+        import pickle
+        pickle.dump((lr0_itemsets, lr0_gotos), f)
 
-with open('lr0_automaton.bin', 'wb') as f:
-    pickle.dump((lr0_itemsets, lr0_gotos), f)
+    write_graph(lr0_itemsets, lr0_gotos)
 
-write_table(table, gotos, grammar, productions)
+    args_parser = argparse.ArgumentParser(
+        prog="generate_parser_table",
+        description="A script to generate the parser table"
+    )
 
-conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
-conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
-conflicting_states = sorted(set(conflicting_states))
-print(f"{conflicting_states = }\nn={len(conflicting_states)}")
+    args_parser.add_argument('--store-table', action="store", type=bool, default=True)
+    args = args_parser.parse_args()
 
-graphviz_str = """digraph LR0 {
-    splines=ortho;
-    randdir=LR;
-"""
+    if args.store_table:
+        table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
 
-for i, itemset in enumerate(lr0_itemsets):
-    itemset_str = reduce(lambda p, a: f'{p}{a}\\n ', print_itemset(itemset), '')
-    graphviz_str += f"\tI_{i} [shape=square, label=\"{i}\\n{itemset_str}\"]; \n"
+        write_table(table, gotos, grammar)
 
-inverted_gotos = {}
-for i, sym in lr0_gotos:
-    j = lr0_gotos[(i, sym)]
-    if (j, sym) not in inverted_gotos:
-        inverted_gotos[(j, sym)] = []
-
-    inverted_gotos[(j, sym)].append(i)
-
-for i, sym in inverted_gotos:
-    source_str = reduce(lambda acc, p: f"{acc}I_{p} ", inverted_gotos[(i, sym)], '')
-    graphviz_str += f"\t{{ {source_str} }} -> I_{i} ;\n"
-
-graphviz_str += "\n}"
-
-with open("graph.gv", 'w') as g:
-    g.write(graphviz_str)
-
+    conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
+    conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
+    conflicting_states = sorted(set(conflicting_states))
+    print(f"{conflicting_states = }\nn={len(conflicting_states)}")
 
