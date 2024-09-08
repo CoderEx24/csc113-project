@@ -58,6 +58,7 @@ pub enum Token {
     Type(String),
     Integer(i128),
     StringLiteral(String),
+    EndOfInput,
     // }}}
 }
 
@@ -69,6 +70,7 @@ pub struct Lexer {
     lookahead_letter: char,
     buffer: String,
     line_number: usize,
+    finished: bool,
 }
 
 impl Lexer {
@@ -85,6 +87,7 @@ impl Lexer {
             buffer: buf,
             lexem_begin_letter: first_letter,
             lookahead_letter: second_letter,
+            finished: false,
         }
     }
 
@@ -143,7 +146,7 @@ impl Iterator for Lexer {
             // }}}
         ]);
 
-        let mut new_token = None;
+        let new_token;
 
         /*println!("Processing letters: {} = {:x}, {} = {:x}", 
             self.lexem_begin_letter,
@@ -190,9 +193,14 @@ impl Iterator for Lexer {
             }
         }
         // }}}
+        
+        if self.finished {
+            return None;
+        }
             
         if self.lexem_begin_letter == '\0' {
-            return None;
+            self.finished = true;
+            return Some(Token::EndOfInput);
         }
         
 
@@ -354,6 +362,7 @@ impl Display for Token {
             Token::Type(s) => write!(f, "<Type, {}>", s),
             Token::Integer(i) => write!(f, "<Integer, {}>", i),
             Token::StringLiteral(s) => write!(f, "<StringLiteral, {}>", s),
+            Token::EndOfInput => write!(f, "< $ >"),
             // }}}
         }
     }
