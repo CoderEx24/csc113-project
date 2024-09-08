@@ -223,7 +223,7 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
     table[(1, '$')] = ["acc"]
 
     for i, itemset in enumerate(itemsets):
-        for (head, production, dot) in itemset:
+        for (head, production, dot) in lr0_itemset_closure(itemset, grammar_):
             grammar_symbols = production.split(' ')
             symbol_after_dot = grammar_symbols[dot] if dot < len(grammar_symbols) else None
 
@@ -271,9 +271,9 @@ def write_table(parsing_table, nonterminal_gotos, grammar_):
         "'<'": 'Token::Relop(Relop::LT)',
         "'='": 'Token::Relop(Relop::EE)',
         "'ID'": 'Token::Id(_)',
-        "'TYPE'": 'Token::Id(_)',
-        "'integer'": 'Token::Literal(_)',
-        "'string'": 'Token::Literal(_)',
+        "'TYPE'": 'Token::Type(_)',
+        "'integer'": 'Token::Integer(_)',
+        "'string'": 'Token::StringLiteral(_)',
         "'class'": 'Token::Class',
         "'else'": 'Token::Else',
         "'false'": 'Token::False',
