@@ -5,12 +5,14 @@ grammar = {
     'program': ["class_prod ';' program", "class_prod ';'"],
 
     'class_prod': ["'class' 'TYPE' '{' feature_list '}'",
-              "'class' 'TYPE' 'inherits' 'TYPE' '{' feature_list '}'"],
+              "'class' 'TYPE' 'inherits' 'TYPE' '{' feature_list '}'",
+              "'class' 'TYPE' 'inherits' 'TYPE' '{' '}'"],
 
     'feature_list': ["feature ';' feature_list",
                      "feature ';'"],
 
     'feature': ["'ID' '(' formal_list ')' ':' 'TYPE' '{' expr '}'",
+                "'ID' '(' ')' ':' 'TYPE' '{' expr '}'",
                 "'ID' ':' 'TYPE' '<-' expr",
                 "'ID' ':' 'TYPE'"],
 
@@ -32,8 +34,11 @@ grammar = {
 
     'expr': ["'ID' '<-' expr",
              "expr '.' 'ID' '(' expr_list ')'",
+             "expr '.' 'ID' '(' ')'",
              "expr '@' 'TYPE' '.' 'ID' '(' expr_list ')'",
+             "expr '@' 'TYPE' '.' 'ID' '(' ')'",
              "'ID' '(' expr_list ')'",
+             "'ID' '(' ')'",
              "'if' expr 'then' expr 'else' expr 'fi'",
              "'while' expr 'loop' expr 'pool'",
              "'{' block_list '}'",
