@@ -92,6 +92,10 @@ impl Lexer {
         }
     }
 
+    pub fn line_number(&self) -> usize {
+        self.line_number
+    }
+
     fn advance(&mut self) {
         self.lexem_begin += 1;
         self.lexem_begin_letter = self.buffer.chars().nth(self.lexem_begin).unwrap_or('\0');
