@@ -1,84 +1,29 @@
 from itertools import chain
 from functools import reduce
 
-grammar = {
-    'program': ["class_prod ';' program", "class_prod ';'"],
+def read_grammar(grammar_filename):
+    terminals = []
+    nonterminals = []
+    productions = []
+    grammar = {}
+    with open(grammar_filename, 'r') as f:
+        for line in filter(lambda l: not l.isspace(), f.readlines()):
+            head, production = line.split('->')
+            head = head.strip()
+            production = production.strip()
 
-    'class_prod': ["'class' 'TYPE' '{' feature_list '}'",
-              "'class' 'TYPE' 'inherits' 'TYPE' '{' feature_list '}'",
-              "'class' 'TYPE' 'inherits' 'TYPE' '{' '}'"],
+            if head not in grammar:
+                grammar[head] = [production]
 
-    'feature_list': ["feature ';' feature_list",
-                     "feature ';'"],
+            grammar[head].append(production)
+            productions.append((head, production))
+            if head not in nonterminals:
+                nonterminals.append(head)
 
-    'feature': ["'ID' '(' formal_list ')' ':' 'TYPE' '{' expr '}'",
-                "'ID' '(' ')' ':' 'TYPE' '{' expr '}'",
-                "'ID' ':' 'TYPE' '<-' expr",
-                "'ID' ':' 'TYPE'"],
+            for t in filter(lambda p: p.startswith("'") and p not in terminals, production.split(' ')):
+                terminals.append(t)
 
-    'formal_list': ["formal ',' formal_list",
-                    "formal"],
-
-    'formal': ["'ID' ':' 'TYPE'"],
-
-    'expr_list': ["expr ',' expr_list", "expr"],
-
-    'block_list': ["expr ';' block_list", "expr ';'"],
-
-    'assign_list': ["'ID' ':' 'TYPE' '<-' expr ',' assign_list",
-                    "'ID' ':' 'TYPE' ',' assign_list",
-                    "'ID' ':' 'TYPE' '<-' expr",
-                    "'ID' ':' 'TYPE'"],
-    'case_list': ["'ID' ':' 'TYPE' '=>' expr ';' case_list",
-                  "'ID' ':' 'TYPE' '=>' expr ';'"],
-
-    'expr': ["'ID' '<-' expr",
-             "expr '.' 'ID' '(' expr_list ')'",
-             "expr '.' 'ID' '(' ')'",
-             "expr '@' 'TYPE' '.' 'ID' '(' expr_list ')'",
-             "expr '@' 'TYPE' '.' 'ID' '(' ')'",
-             "'ID' '(' expr_list ')'",
-             "'ID' '(' ')'",
-             "'if' expr 'then' expr 'else' expr 'fi'",
-             "'while' expr 'loop' expr 'pool'",
-             "'{' block_list '}'",
-             "'let' assign_list 'in' expr",
-             "'case' expr 'of' case_list 'esac'",
-             "'new' 'TYPE'",
-             "'isvoid' expr",
-             "expr '+' expr",
-             "expr '-' expr",
-             "expr '*' expr",
-             "expr '/' expr",
-             "'~' expr",
-             "expr '<' expr",
-             "expr '<-' expr",
-             "expr '<=' expr",
-             "expr '=' expr",
-             "'not' expr",
-             "'(' expr ')'",
-             "'ID'",
-             "'integer'",
-             "'string'",
-             "'true'",
-             "'false'"],
-}
-
-nonterminals = list(grammar.keys())
-
-terminals = []
-for prods in grammar.values():
-    for p in prods:
-        for piece in p.split(' '):
-            if piece.startswith("'") and piece not in terminals:
-                terminals.append(piece)
-
-productions = []
-for k in grammar:
-    for prod in grammar[k]:
-        productions.append((k, prod))
-
-grammar = (grammar, nonterminals, terminals, productions)
+    return (grammar, nonterminals, terminals, productions)
 
 def first(symbol, grammar_):
     grammar, nonterminals, terminals, _ = grammar_
@@ -364,7 +309,7 @@ if __name__ == '__main__':
         description="A script to generate the parser table"
     )
 
-    args_parser.add_argument('grammar_file_path')
+    args_parser.add_argument('grammar_filepath')
     args_parser.add_argument('--dont-store-table', action='store_true')
     args_parser.add_argument('--dont-store-automaton', action='store_true')
     args_parser.add_argument('--dont-store-graph', action='store_true')
@@ -383,6 +328,7 @@ if __name__ == '__main__':
     productions_filename = path.join(output_dir, args.productions_filename)
     graph_filename = path.join(output_dir, args.graph_filename)
 
+    grammar = read_grammar(args.grammar_filepath)
     lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
 
     if not args.dont_store_automaton:

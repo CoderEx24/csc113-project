@@ -1,0 +1,54 @@
+program -> class_prod ';' program
+program -> class_prod ';'
+class_prod -> 'class' 'TYPE' '{' feature_list '}'
+class_prod -> 'class' 'TYPE' 'inherits' 'TYPE' '{' feature_list '}'
+class_prod -> 'class' 'TYPE' 'inherits' 'TYPE' '{' '}'
+feature_list -> feature ';' feature_list
+feature_list -> feature ';'
+feature -> 'ID' '(' formal_list ')' ':' 'TYPE' '{' expr '}'
+feature -> 'ID' '(' ')' ':' 'TYPE' '{' expr '}'
+feature -> 'ID' ':' 'TYPE' '<-' expr
+feature -> 'ID' ':' 'TYPE'
+formal_list -> formal ',' formal_list
+formal_list -> formal
+formal -> 'ID' ':' 'TYPE'
+expr_list -> expr ',' expr_list
+expr_list -> expr
+block_list -> expr ';' block_list
+block_list -> expr ';'
+assign_list -> 'ID' ':' 'TYPE' '<-' expr ',' assign_list
+assign_list -> 'ID' ':' 'TYPE' ',' assign_list
+assign_list -> 'ID' ':' 'TYPE' '<-' expr
+assign_list -> 'ID' ':' 'TYPE'
+case_list -> 'ID' ':' 'TYPE' '=>' expr ';' case_list
+case_list -> 'ID' ':' 'TYPE' '=>' expr ';'
+expr -> 'ID' '<-' expr
+expr -> expr '.' 'ID' '(' expr_list ')'
+expr -> expr '.' 'ID' '(' ')'
+expr -> expr '@' 'TYPE' '.' 'ID' '(' expr_list ')'
+expr -> expr '@' 'TYPE' '.' 'ID' '(' ')'
+expr -> 'ID' '(' expr_list ')'
+expr -> 'ID' '(' ')'
+expr -> 'if' expr 'then' expr 'else' expr 'fi'
+expr -> 'while' expr 'loop' expr 'pool'
+expr -> '{' block_list '}'
+expr -> 'let' assign_list 'in' expr
+expr -> 'case' expr 'of' case_list 'esac'
+expr -> 'new' 'TYPE'
+expr -> 'isvoid' expr
+expr -> expr '+' expr
+expr -> expr '-' expr
+expr -> expr '*' expr
+expr -> expr '/' expr
+expr -> '~' expr
+expr -> expr '<' expr
+expr -> expr '<-' expr
+expr -> expr '<=' expr
+expr -> expr '=' expr
+expr -> 'not' expr
+expr -> '(' expr ')'
+expr -> 'ID'
+expr -> 'integer'
+expr -> 'string'
+expr -> 'true'
+expr -> 'false'
