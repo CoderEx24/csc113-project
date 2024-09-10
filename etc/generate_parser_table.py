@@ -70,10 +70,8 @@ terminals = []
 for prods in grammar.values():
     for p in prods:
         for piece in p.split(' '):
-            if piece.startswith("'"):
+            if piece.startswith("'") and piece not in terminals:
                 terminals.append(piece)
-
-terminals = set(terminals)
 
 productions = []
 for k in grammar:
@@ -89,18 +87,25 @@ def first(symbol, grammar_):
         yield symbol
 
     else:
+        possible_first_symbols = terminals.copy()
+
         for production in grammar[symbol]:
             for prod_symbol in production.split(' '):
                 if prod_symbol == symbol:
                     break
 
-                symbol_first_list = set(first(prod_symbol, grammar_))
+                symbol_first_list = first(prod_symbol, grammar_)
 
-                for i in symbol_first_list:
+                for i in filter(lambda i: i in possible_first_symbols, symbol_first_list):
+                    possible_first_symbols.remove(i)
                     yield i
 
                 if '' not in symbol_first_list:
                     break
+
+print(list(first('expr', grammar)))
+import sys
+sys.exit(0)
 
 def follow(symbol, grammar_):
     grammar, nonterminals, terminals, _ = grammar_
