@@ -103,10 +103,6 @@ def first(symbol, grammar_):
                 if '' not in symbol_first_list:
                     break
 
-print(list(first('expr', grammar)))
-import sys
-sys.exit(0)
-
 def follow(symbol, grammar_):
     grammar, nonterminals, terminals, _ = grammar_
 
@@ -115,6 +111,8 @@ def follow(symbol, grammar_):
 
     if symbol == nonterminals[0]:
         yield '$'
+
+    possible_follow_symbols = [*terminals, '$']
 
     for nonterminal in grammar:
         for production in grammar[nonterminal]:
@@ -129,10 +127,10 @@ def follow(symbol, grammar_):
 
                 if idx < len(grammar_symbols) - 1:
                     for gs in grammar_symbols[idx + 1:]:
-                        gs_first_list = set(first(gs, grammar_))
-                        for i in gs_first_list:
-                            if i != '':
-                                yield i
+                        gs_first_list = first(gs, grammar_)
+                        for i in filter(lambda ii: ii != '' and ii in possible_follow_symbols, gs_first_list):
+                            possible_follow_symbols.remove(i)
+                            yield i
 
                         if '' not in gs_first_list:
                             break
@@ -140,9 +138,9 @@ def follow(symbol, grammar_):
                     if nonterminal == symbol:
                         continue
 
-                    for i in follow(nonterminal, grammar_):
-                        if i != '':
-                            yield i
+                    for i in filter(lambda ii: ii in possible_follow_symbols, follow(nonterminal, grammar_)):
+                        possible_follow_symbols.remove(i)
+                        yield i
 
 def lr0_itemset_closure(itemset, grammar_):
     grammar, nonterminals, terminals, _ = grammar_
