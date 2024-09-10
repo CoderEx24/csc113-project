@@ -248,7 +248,7 @@ def generate_lr0_parsing_table(itemsets, gotos, grammar_):
         table[i] = sorted(set(table[i]))
     return table, nonterminal_gotos
 
-def write_table(parsing_table, nonterminal_gotos, grammar_):
+def write_table(parsing_table, nonterminal_gotos, grammar_, actions_filename, gotos_filename, productions_filename):
     grammar, nonterminals, _, productions = grammar_
     # {{{ Token names table
     token_name_table = {
@@ -300,7 +300,7 @@ def write_table(parsing_table, nonterminal_gotos, grammar_):
     }
     # }}} 
 
-    with open("actions.txt", "w") as f:
+    with open(actions_filename, "w") as f:
         for k in parsing_table:
             if len(parsing_table[k]) == 0:
                 continue
@@ -320,15 +320,15 @@ def write_table(parsing_table, nonterminal_gotos, grammar_):
             f.write(table_entry)
             f.write('\n')
 
-    with open("gotos.txt", 'w') as f:
+    with open(gotos_filename, 'w') as f:
         for k in filter(lambda k: nonterminal_gotos[k] is not None, nonterminal_gotos):
             f.write(f"({k[0]}, {nonterminals.index(k[1])}) => Ok({nonterminal_gotos[k]}),\n")
 
-    with open("productions.txt", 'w') as f:
+    with open(productions_filename, 'w') as f:
         for i, (k, p) in enumerate(productions):
                 f.write(f"{i} => Ok(\"{k} -> {p}\"),\n")
 
-def write_graph(lr0_itemsets, lr0_gotos):
+def write_graph(lr0_itemsets, lr0_gotos, graph_filename):
     graphviz_str = """digraph LR0 {
         splines=ortho;
         randdir=LR;
@@ -352,34 +352,51 @@ def write_graph(lr0_itemsets, lr0_gotos):
 
     graphviz_str += "\n}"
 
-    with open("graph.gv", 'w') as g:
+    with open(graph_filename, 'w') as g:
         g.write(graphviz_str)
-
-
-
 
 if __name__ == '__main__':
     import argparse
-    lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
-
-    with open('lr0_automaton.bin', 'wb') as f:
-        import pickle
-        pickle.dump((lr0_itemsets, lr0_gotos), f)
-
-    write_graph(lr0_itemsets, lr0_gotos)
+    from os import path
 
     args_parser = argparse.ArgumentParser(
         prog="generate_parser_table",
         description="A script to generate the parser table"
     )
 
-    args_parser.add_argument('--store-table', action="store", type=bool, default=True)
+    args_parser.add_argument('grammar_file_path')
+    args_parser.add_argument('--dont-store-table', action='store_true')
+    args_parser.add_argument('--dont-store-automaton', action='store_true')
+    args_parser.add_argument('--dont-store-graph', action='store_true')
+    args_parser.add_argument('-O', '--output-directory', action='store', type=str, default='.')
+    args_parser.add_argument('--automaton-filename', action='store', type=str, default='lr0_automaton.bin')
+    args_parser.add_argument('--actions-filename', action='store', type=str, default='actions.txt')
+    args_parser.add_argument('--gotos-filename', action='store', type=str, default='gotos.txt')
+    args_parser.add_argument('--productions-filename', action='store', type=str, default='productions.txt')
+    args_parser.add_argument('--graph-filename', action='store', type=str, default='graph.gv')
     args = args_parser.parse_args()
 
-    if args.store_table:
+    output_dir = args.output_directory
+    automaton_filename = path.join(output_dir, args.automaton_filename)
+    actions_filename = path.join(output_dir, args.actions_filename)
+    gotos_filename = path.join(output_dir, args.gotos_filename)
+    productions_filename = path.join(output_dir, args.productions_filename)
+    graph_filename = path.join(output_dir, args.graph_filename)
+
+    lr0_itemsets, lr0_gotos = generate_lr0_automaton(grammar)
+
+    if not args.dont_store_automaton:
+        with open(automaton_filename, 'wb') as f:
+            import pickle
+            pickle.dump((lr0_itemsets, lr0_gotos), f)
+
+    if not args.dont_store_graph:
+        write_graph(lr0_itemsets, lr0_gotos, graph_filename)
+
+    if not args.dont_store_table:
         table, gotos = generate_lr0_parsing_table(lr0_itemsets, lr0_gotos, grammar)
 
-        write_table(table, gotos, grammar)
+        write_table(table, gotos, grammar, actions_filename, gotos_filename, productions_filename)
 
     conflicting_states = filter(lambda combo: len(combo[1]) > 1, table.items())
     conflicting_states = reduce(lambda acc, combo: [*acc, combo[0][0]], conflicting_states, [])
