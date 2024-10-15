@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::{self, Display};
 use std::rc::Rc;
 
 #[derive(PartialEq, Clone)]
@@ -71,10 +72,9 @@ impl Class {
     }
 
     pub fn contains_method(&self, name: &str) -> bool {
-        self.features.get(name).map_or_else(
-            || self.parent.contains_method(name),
-            |u| u.is_method()
-        )
+        self.features
+            .get(name)
+            .map_or_else(|| self.parent.contains_method(name), |u| u.is_method())
     }
 
     pub fn add_member_variable(&mut self, name: &str, type_: &Type) -> Result<(), String> {
@@ -108,18 +108,43 @@ impl Class {
 
     pub fn redefine_method(&mut self, method: Method) -> Result<(), String> {
         if !self.contains_method(method.name.as_str()) {
-            Err(format!(
-                "method {} is not defined already", 
-                method.name
-            ))
+            Err(format!("method {} is not defined already", method.name))
         } else {
-            self.features.insert(method.name.clone(), ClassFeature::Method(method));
+            self.features
+                .insert(method.name.clone(), ClassFeature::Method(method));
             Ok(())
         }
     }
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::Object => write!(f, "Object"),
+            Type::String => write!(f, "String"),
+            Type::Bool => write!(f, "Bool"),
+            Type::Int => write!(f, "Int"),
+            Type::IO => write!(f, "IO"),
+            Type::Custom(t) => write!(f, "{}", t.borrow().name),
+        }
+    }
+}
+
 impl Type {
+    pub fn is_builtin(name: &str) -> bool {
+        match name {
+            "Object" | "String" | "Bool" | "Int" | "IO" => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_inheritable(name: &str) -> bool {
+        match name {
+            "String" | "Bool" | "Int" => false,
+            _ => true,
+        }
+    }
+
     pub fn contains_member_variable(&self, name: &str) -> bool {
         match self {
             Type::Custom(t) => t.borrow().contains_member_variable(name),
@@ -144,5 +169,230 @@ impl Type {
             Type::Custom(t) => t.borrow().contains_method(name),
             _ => false,
         }
+    }
+
+    pub fn add_member_variable(&self, name: &str, type_: &Type) -> Result<(), String> {
+        match self {
+            Type::Custom(t) => t.borrow_mut().add_member_variable(name, type_),
+            _ => Err(format!(
+                "Cannot add members to builtin type {}.\nSomething is very wrong",
+                self
+            )),
+        }
+    }
+
+    pub fn add_method(&self, name: &str, parameters: HashMap<String, Type>) -> Result<(), String> {
+        match self {
+            Type::Custom(t) => {
+                let method = Method {
+                    name: name.to_owned(),
+                    class: t.clone(),
+                    parameters,
+                };
+                t.borrow_mut().add_method(method)
+            }
+            _ => Err(format!(
+                "Cannot add methods to builtin type {}.\nSomething is very wrong",
+                self
+            )),
+        }
+    }
+
+    pub fn redefine_method(
+        &self,
+        name: &str,
+        parameters: HashMap<String, Type>,
+    ) -> Result<(), String> {
+        match self {
+            Type::Custom(t) => {
+                let method = Method {
+                    name: name.to_owned(),
+                    class: t.clone(),
+                    parameters,
+                };
+                t.borrow_mut().redefine_method(method)
+            }
+            _ => Err(format!("Cannot redefined methods of builtin {}", self)),
+        }
+    }
+}
+
+struct SymbolTable {
+    symbols: HashMap<String, Type>,
+    i: u32,
+}
+
+impl SymbolTable {
+    pub fn new() -> Self {
+        Self {
+            symbols: HashMap::new(),
+            i: 0,
+        }
+    }
+
+    pub fn contains_symbol(&self, name: &str) -> bool {
+        self.symbols.contains_key(name)
+    }
+
+    pub fn add_new_variable(&mut self, name: &str, t: Type) -> Result<(), String> {
+        if self.contains_symbol(name) {
+            Err(format!("{} is already defined", name))
+        } else {
+            self.symbols.insert(name.to_owned(), t);
+            Ok(())
+        }
+    }
+
+    pub fn add_new_temporary(&mut self, t: Type) {
+        let name = format!("t{}", self.i);
+        self.i += 1;
+        self.symbols.insert(name, t);
+    }
+
+    pub fn get(&self, name: &str) -> Option<&Type> {
+        self.symbols.get(name)
+    }
+}
+
+pub struct Env {
+    classes: HashMap<String, Rc<RefCell<Class>>>,
+    symbol_tables: Vec<SymbolTable>,
+}
+
+impl Env {
+    fn into_type(&self, name: &str) -> Result<Type, String> {
+        Ok(match name {
+            "Object" => Type::Object,
+            "String" => Type::String,
+            "Bool" => Type::Bool,
+            "Int" => Type::Int,
+            "IO" => Type::IO,
+            _ => {
+                let c = self
+                    .classes
+                    .get(name)
+                    .cloned()
+                    .ok_or(format!("Type {} is not defined", name))?;
+                Type::Custom(c)
+            }
+        })
+    }
+
+    pub fn new() -> Self {
+        Self {
+            classes: HashMap::new(),
+            symbol_tables: vec![],
+        }
+    }
+
+    pub fn type_declared(&self, name: &str) -> bool {
+        Type::is_builtin(name) || self.classes.contains_key(name)
+    }
+
+    pub fn declare_class(&mut self, name: &str, parent: Option<&str>) -> Result<(), String> {
+        if self.type_declared(name) {
+            Err(format!("class {} is already defined", name))
+        } else {
+            let parent_is_inheritable = parent.map_or(true, |c| Type::is_inheritable(c));
+
+            if !parent_is_inheritable {
+                return Err(format!("No class can inherit from Int, Bool or String"));
+            }
+
+            let parent = parent.map(|n| match n {
+                "Object" => Type::Object,
+                "IO" => Type::IO,
+                _ => {
+                    let c = self.classes.get(n).cloned().unwrap();
+                    Type::Custom(c)
+                }
+            });
+
+            let new_class = Class::new(name, parent);
+            let new_class = Rc::new(RefCell::new(new_class));
+            self.classes.insert(name.to_owned(), new_class);
+
+            Ok(())
+        }
+    }
+
+    pub fn define_member_variable(
+        &mut self,
+        classname: &str,
+        name: &str,
+        type_: &str,
+    ) -> Result<(), String> {
+        if Type::is_builtin(classname) {
+            Err(format!(
+                "Cannot define member variables for {}.\nSomething is very wrong!!!",
+                classname
+            ))
+        } else {
+            let class = self.into_type(classname)?;
+            let t = self.into_type(type_)?;
+
+            self.classes
+                .get(classname)
+                .unwrap()
+                .borrow_mut()
+                .add_member_variable(name, &t)
+        }
+    }
+
+    pub fn define_method(
+        &mut self,
+        classname: &str,
+        name: &str,
+        parameters: HashMap<String, String>,
+    ) -> Result<(), String> {
+        if Type::is_builtin(classname) {
+            Err(format!(
+                "Cannot define member variables for {}.\nSomething is very wrong!!!",
+                classname
+            ))
+        } else if !self.type_declared(classname) {
+            Err(format!("class {} is not declared", classname))
+        } else if !parameters.values().all(|t| self.type_declared(t.as_str())) {
+            let param = parameters
+                .iter()
+                .find(|(_, t)| !self.type_declared(t.as_str()))
+                .unwrap();
+            Err(format!(
+                "type {} of parameter {} is not declared",
+                param.1, param.0
+            ))
+        } else {
+            let parameters: HashMap<String, Type> = parameters
+                .iter()
+                .map(|(n, t)| (n.clone(), self.into_type(t).unwrap()))
+                .collect();
+
+            let class = self.classes.get(classname).unwrap();
+            let new_method = Method {
+                name: name.to_owned(),
+                class: Rc::clone(class),
+                parameters,
+            };
+
+            class.borrow_mut().add_method(new_method)
+        }
+    }
+
+    pub fn start_scope(&mut self) {
+        self.symbol_tables.push(SymbolTable::new());
+    }
+
+    pub fn end_scope(&mut self) {
+        self.symbol_tables.pop();
+    }
+
+    pub fn add_variable(&mut self, name: &str, type_: &str) -> Result<(), String> {
+        let t = self.into_type(type_)?;
+
+        self.symbol_tables
+            .iter_mut()
+            .last()
+            .unwrap()
+            .add_new_variable(name, t)
     }
 }
