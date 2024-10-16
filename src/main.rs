@@ -1,5 +1,6 @@
 mod lexer;
 mod parser;
+mod symbol_table;
 
 use lexer::Lexer;
 use parser::Parser;

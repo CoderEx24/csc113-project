@@ -1,12 +1,12 @@
-use std::fmt::Display;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Relop {
     EE,
-    LT, 
-    LE
+    LT,
+    LE,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -119,14 +119,12 @@ impl Lexer {
         self.lexem_begin_letter = self.buffer.chars().nth(self.lexem_begin).unwrap_or('\0');
         self.lookahead_letter = self.buffer.chars().nth(self.lookahead).unwrap_or('\0');
     }
-
 }
 
 impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-
         let keywords = HashMap::from([
             // {{{
             ("class", Token::Class),
@@ -153,17 +151,17 @@ impl Iterator for Lexer {
 
         let new_token;
 
-        /*println!("Processing letters: {} = {:x}, {} = {:x}", 
-            self.lexem_begin_letter,
-            self.lexem_begin_letter as u16, 
-            self.lookahead_letter,
-            self.lookahead_letter as u16);*/
+        /*println!("Processing letters: {} = {:x}, {} = {:x}",
+        self.lexem_begin_letter,
+        self.lexem_begin_letter as u16,
+        self.lookahead_letter,
+        self.lookahead_letter as u16);*/
 
-// {{{ Processing Comments
-        while self.lexem_begin_letter == '(' ||
-                self.lexem_begin_letter == '-' ||
-                self.lexem_begin_letter.is_whitespace() {
-
+        // {{{ Processing Comments
+        while self.lexem_begin_letter == '('
+            || self.lexem_begin_letter == '-'
+            || self.lexem_begin_letter.is_whitespace()
+        {
             while self.lexem_begin_letter.is_whitespace() {
                 self.advance();
             }
@@ -179,17 +177,14 @@ impl Iterator for Lexer {
 
                 self.advance();
                 self.advance();
-            }
-
-            else if self.lexem_begin_letter == '-' && self.lookahead_letter == '-' {
+            } else if self.lexem_begin_letter == '-' && self.lookahead_letter == '-' {
                 while self.lexem_begin_letter != '\n' {
                     //println!("Ignoring Comment Content: {}", self.lexem_begin_letter);
                     self.advance();
                 }
 
                 self.advance();
-            }
-            else {
+            } else {
                 break;
             }
 
@@ -198,68 +193,127 @@ impl Iterator for Lexer {
             }
         }
         // }}}
-        
+
         if self.finished {
             return None;
         }
-            
+
         if self.lexem_begin_letter == '\0' {
             self.finished = true;
             return Some(Token::EndOfInput);
         }
-        
 
         match self.lexem_begin_letter {
-            ':' => {new_token = Some(Token::Colon); self.advance()},
-            ',' => {new_token = Some(Token::Comma); self.advance()},
-            '(' => {new_token = Some(Token::LeftParen); self.advance()},
-            ')' => {new_token = Some(Token::RightParen); self.advance()},
-            '{' => {new_token = Some(Token::LeftBrace); self.advance()},
-            '}' => {new_token = Some(Token::RightBrace); self.advance()},
-            '[' => {new_token = Some(Token::LeftBracket); self.advance()},
-            ']' => {new_token = Some(Token::RightBracket); self.advance()},
-            ';' => {new_token = Some(Token::SemiColon); self.advance()},
-            '~' => {new_token = Some(Token::Complement); self.advance()},
-            '+' => {new_token = Some(Token::MathOp(MathOp::Plus)); self.advance()},
-            '-' => {new_token = Some(Token::MathOp(MathOp::Minus)); self.advance()},
-            '*' => {new_token = Some(Token::MathOp(MathOp::Multiply)); self.advance()},
-            '/' => {new_token = Some(Token::MathOp(MathOp::Divide)); self.advance()},
-            '.' => {new_token = Some(Token::Dot); self.advance()},
-            '@' => {new_token = Some(Token::At); self.advance()},
+            ':' => {
+                new_token = Some(Token::Colon);
+                self.advance()
+            }
+            ',' => {
+                new_token = Some(Token::Comma);
+                self.advance()
+            }
+            '(' => {
+                new_token = Some(Token::LeftParen);
+                self.advance()
+            }
+            ')' => {
+                new_token = Some(Token::RightParen);
+                self.advance()
+            }
+            '{' => {
+                new_token = Some(Token::LeftBrace);
+                self.advance()
+            }
+            '}' => {
+                new_token = Some(Token::RightBrace);
+                self.advance()
+            }
+            '[' => {
+                new_token = Some(Token::LeftBracket);
+                self.advance()
+            }
+            ']' => {
+                new_token = Some(Token::RightBracket);
+                self.advance()
+            }
+            ';' => {
+                new_token = Some(Token::SemiColon);
+                self.advance()
+            }
+            '~' => {
+                new_token = Some(Token::Complement);
+                self.advance()
+            }
+            '+' => {
+                new_token = Some(Token::MathOp(MathOp::Plus));
+                self.advance()
+            }
+            '-' => {
+                new_token = Some(Token::MathOp(MathOp::Minus));
+                self.advance()
+            }
+            '*' => {
+                new_token = Some(Token::MathOp(MathOp::Multiply));
+                self.advance()
+            }
+            '/' => {
+                new_token = Some(Token::MathOp(MathOp::Divide));
+                self.advance()
+            }
+            '.' => {
+                new_token = Some(Token::Dot);
+                self.advance()
+            }
+            '@' => {
+                new_token = Some(Token::At);
+                self.advance()
+            }
             '<' => {
                 match self.lookahead_letter {
-                    '-' => { new_token = Some(Token::Assignment); self.advance(); }
-                    '=' => { new_token = Some(Token::Relop(Relop::LE)); self.advance(); } _ => new_token = Some(Token::Relop(Relop::LT)),
+                    '-' => {
+                        new_token = Some(Token::Assignment);
+                        self.advance();
+                    }
+                    '=' => {
+                        new_token = Some(Token::Relop(Relop::LE));
+                        self.advance();
+                    }
+                    _ => new_token = Some(Token::Relop(Relop::LT)),
                 }
 
                 self.advance();
-            },
+            }
             '=' => {
                 match self.lookahead_letter {
-                    '>' => { new_token = Some(Token::FatArrow); self.advance(); },
+                    '>' => {
+                        new_token = Some(Token::FatArrow);
+                        self.advance();
+                    }
                     _ => new_token = Some(Token::Relop(Relop::EE)),
                 }
-                
+
                 self.advance();
-            },
+            }
             'a'..='z' | 'A'..='Z' | '_' => {
                 loop {
-                    if !self.lookahead_letter.is_alphanumeric() &&
-                            self.lookahead_letter != '_' {
+                    if !self.lookahead_letter.is_alphanumeric() && self.lookahead_letter != '_' {
                         let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                        let lexem = String::from(lexem); 
+                        let lexem = String::from(lexem);
 
                         // TODO: This is stupid!
                         let type_token = Token::Type(lexem.clone());
                         let id_token = Token::Id(lexem.clone());
 
-                        new_token = keywords.get(&lexem[..]).or_else(
-                            || if lexem.chars().nth(0).unwrap().is_ascii_uppercase() { 
-                                Some(&type_token) 
-                            } else { 
-                                Some(&id_token) 
-                            }
-                        ).map(|o| o.to_owned());
+                        new_token = keywords
+                            .get(&lexem[..])
+                            .or_else(|| {
+                                if lexem.chars().nth(0).unwrap().is_ascii_uppercase() {
+                                    Some(&type_token)
+                                } else {
+                                    Some(&id_token)
+                                }
+                            })
+                            .map(|o| o.to_owned());
 
                         self.start_new_lexem();
                         break;
@@ -267,57 +321,50 @@ impl Iterator for Lexer {
 
                     self.advance_lookahead();
                 }
-            },
-            '0'..='9' => {
-                loop {
-                    if !self.lookahead_letter.is_alphanumeric() {
-                        let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                        let lexem = String::from(lexem);
-                        let lexem = i128::from_str_radix(&lexem[..], 10)
-                            .expect(format!("[LEXEICAL ERROR] failed to convert {} into integer", lexem).as_str());
-                        new_token = Some(Token::Integer(lexem));
-
-
-                        self.start_new_lexem();
-                        break;
-                    }
-                    else if !self.lookahead_letter.is_numeric() {
-                        while self.lookahead_letter.is_alphanumeric() {
-                            self.advance_lookahead();
-                        }
-
-                        let lexem = &self.buffer[self.lexem_begin..self.lookahead];
-                        panic!("[LEXICAL ERROR] {}:{} |  invalid id {}, ids can't start with a number", 
-                                self.filename,
-                                self.line_number,
-                                lexem);
-
-                    }
-                    self.advance_lookahead();
-                }
-
-            },
-            '\"' => {
-                loop {
-                    if self.lookahead_letter == '\"' {
-                        let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
-                        let lexem = String::from(lexem);
-                        new_token = Some(Token::StringLiteral(lexem));
-
-                        self.start_new_lexem();
-                        self.advance();
-                        break;
-                    }
-
-                    self.advance_lookahead();
-                }
-
             }
+            '0'..='9' => loop {
+                if !self.lookahead_letter.is_alphanumeric() {
+                    let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                    let lexem = String::from(lexem);
+                    let lexem = i128::from_str_radix(&lexem[..], 10).expect(
+                        format!("[LEXEICAL ERROR] failed to convert {} into integer", lexem)
+                            .as_str(),
+                    );
+                    new_token = Some(Token::Integer(lexem));
+
+                    self.start_new_lexem();
+                    break;
+                } else if !self.lookahead_letter.is_numeric() {
+                    while self.lookahead_letter.is_alphanumeric() {
+                        self.advance_lookahead();
+                    }
+
+                    let lexem = &self.buffer[self.lexem_begin..self.lookahead];
+                    panic!(
+                        "[LEXICAL ERROR] {}:{} |  invalid id {}, ids can't start with a number",
+                        self.filename, self.line_number, lexem
+                    );
+                }
+                self.advance_lookahead();
+            },
+            '\"' => loop {
+                if self.lookahead_letter == '\"' {
+                    let lexem = &self.buffer[self.lexem_begin..self.lookahead + 1];
+                    let lexem = String::from(lexem);
+                    new_token = Some(Token::StringLiteral(lexem));
+
+                    self.start_new_lexem();
+                    self.advance();
+                    break;
+                }
+
+                self.advance_lookahead();
+            },
             _ => {
-                panic!("[LEXICAL ERROR] {}:{} | unrecgonized lexem beginning ({}) probably not ASCII", 
-                    self.filename,
-                    self.line_number,
-                    self.lexem_begin_letter);
+                panic!(
+                    "[LEXICAL ERROR] {}:{} | unrecgonized lexem beginning ({}) probably not ASCII",
+                    self.filename, self.line_number, self.lexem_begin_letter
+                );
             }
         }
 
@@ -394,5 +441,3 @@ impl Display for MathOp {
         }
     }
 }
-
-

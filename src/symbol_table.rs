@@ -248,7 +248,7 @@ impl Type {
     pub fn unwrap_class(&self) -> Option<Rc<RefCell<Class>>> {
         match self {
             Type::Custom(t) => Some(t.clone()),
-            _ => None
+            _ => None,
         }
     }
 }
