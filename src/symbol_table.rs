@@ -224,6 +224,13 @@ impl Type {
             _ => Err(format!("Cannot redefined methods of builtin {}", self)),
         }
     }
+
+    pub fn unwrap_class(&self) -> Option<Rc<RefCell<Class>>> {
+        match self {
+            Type::Custom(t) => Some(t.clone()),
+            _ => None
+        }
+    }
 }
 
 struct SymbolTable {
@@ -308,14 +315,7 @@ impl Env {
                 return Err(format!("No class can inherit from Int, Bool or String"));
             }
 
-            let parent = parent.map(|n| match n {
-                "Object" => Type::Object,
-                "IO" => Type::IO,
-                _ => {
-                    let c = self.classes.get(n).cloned().unwrap();
-                    Type::Custom(c)
-                }
-            });
+            let parent = parent.map(|n| self.into_type(n).unwrap());
 
             let new_class = Class::new(name, parent);
             let new_class = Rc::new(RefCell::new(new_class));
@@ -340,11 +340,7 @@ impl Env {
             let class = self.into_type(classname)?;
             let t = self.into_type(type_)?;
 
-            self.classes
-                .get(classname)
-                .unwrap()
-                .borrow_mut()
-                .add_member_variable(name, &t)
+            class.add_member_variable(name, &t)
         }
     }
 
@@ -360,8 +356,6 @@ impl Env {
                 "Cannot define member variables for {}.\nSomething is very wrong!!!",
                 classname
             ))
-        } else if !self.type_declared(classname) {
-            Err(format!("class {} is not declared", classname))
         } else if !parameters.values().all(|t| self.type_declared(t.as_str())) {
             let param = parameters
                 .iter()
@@ -377,16 +371,10 @@ impl Env {
                 .map(|(n, t)| (n.clone(), self.into_type(t).unwrap()))
                 .collect();
 
-            let class = self.classes.get(classname).unwrap();
+            let class = self.into_type(classname)?;
             let return_type = self.into_type(return_type)?;
-            let new_method = Method {
-                name: name.to_owned(),
-                class: Rc::clone(class),
-                parameters,
-                return_type,
-            };
 
-            class.borrow_mut().add_method(new_method)
+            class.add_method(name, parameters, &return_type)
         }
     }
 
