@@ -395,4 +395,16 @@ impl Env {
             .unwrap()
             .add_new_variable(name, t)
     }
+
+    pub fn add_temporary(&mut self, type_: &str) -> Result<(), String> {
+        let t = self.into_type(type_)?;
+
+        self.symbol_tables
+            .iter_mut()
+            .last()
+            .unwrap()
+            .add_new_temporary(t);
+
+        Ok(())
+    }
 }
