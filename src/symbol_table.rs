@@ -18,6 +18,7 @@ struct Method {
     pub name: String,
     pub class: Rc<RefCell<Class>>,
     pub parameters: HashMap<String, Type>,
+    pub return_type: Type,
 }
 
 impl Method {
@@ -181,13 +182,19 @@ impl Type {
         }
     }
 
-    pub fn add_method(&self, name: &str, parameters: HashMap<String, Type>) -> Result<(), String> {
+    pub fn add_method(
+        &self,
+        name: &str,
+        parameters: HashMap<String, Type>,
+        return_type: &Type,
+    ) -> Result<(), String> {
         match self {
             Type::Custom(t) => {
                 let method = Method {
                     name: name.to_owned(),
                     class: t.clone(),
                     parameters,
+                    return_type: return_type.clone(),
                 };
                 t.borrow_mut().add_method(method)
             }
@@ -202,6 +209,7 @@ impl Type {
         &self,
         name: &str,
         parameters: HashMap<String, Type>,
+        return_type: &Type,
     ) -> Result<(), String> {
         match self {
             Type::Custom(t) => {
@@ -209,6 +217,7 @@ impl Type {
                     name: name.to_owned(),
                     class: t.clone(),
                     parameters,
+                    return_type: return_type.clone(),
                 };
                 t.borrow_mut().redefine_method(method)
             }
@@ -344,6 +353,7 @@ impl Env {
         classname: &str,
         name: &str,
         parameters: HashMap<String, String>,
+        return_type: &str,
     ) -> Result<(), String> {
         if Type::is_builtin(classname) {
             Err(format!(
@@ -368,10 +378,12 @@ impl Env {
                 .collect();
 
             let class = self.classes.get(classname).unwrap();
+            let return_type = self.into_type(return_type)?;
             let new_method = Method {
                 name: name.to_owned(),
                 class: Rc::clone(class),
                 parameters,
+                return_type,
             };
 
             class.borrow_mut().add_method(new_method)
