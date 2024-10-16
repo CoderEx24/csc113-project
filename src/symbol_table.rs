@@ -116,6 +116,26 @@ impl Class {
             Ok(())
         }
     }
+
+    pub fn get_member_type(&self, name: &str) -> Option<&Type> {
+        self.features
+            .get(name)
+            .map(|f| match f {
+                ClassFeature::Member(_, t) => Some(t),
+                _ => None,
+            })
+            .flatten()
+    }
+
+    pub fn get_method(&self, name: &str) -> Option<&Method> {
+        self.features
+            .get(name)
+            .map(|f| match f {
+                ClassFeature::Method(m) => Some(m),
+                _ => None,
+            })
+            .flatten()
+    }
 }
 
 impl Display for Type {
