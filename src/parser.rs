@@ -1548,6 +1548,7 @@ fn goto(state: u8, nonterminal: u8) -> u8 {
 pub struct Parser {
     lex: Lexer,
     stack: Vec<u8>,
+    current_token: Option<Token>,
 }
 
 impl Parser {
@@ -1555,39 +1556,46 @@ impl Parser {
         Parser {
             lex,
             stack: vec![0],
+            current_token: None,
         }
     }
+}
 
-    pub fn parse(&mut self) {
-        let mut t = self.lex.next();
+impl Iterator for Parser {
+    type Item = String;
 
-        while t != None {
-            let token = t.clone().unwrap();
-            let top = self.stack.last().unwrap();
 
-            println!("token: {}, stack: {:?}", token, self.stack);
-            match action(top, &token) {
-                Action::Shift(u) => {
-                    self.stack.push(u);
-                    t = self.lex.next();
-                }
-                Action::Reduce(n, l) => {
-                    self.stack.truncate(self.stack.len() - (l as usize));
+   fn next(&mut self) -> Option<Self::Item> {
+       self.current_token = self.current_token.clone().or_else(|| self.lex.next());
 
-                    println!("\t\t{}", production(n));
-                    let top = *self.stack.last().unwrap();
-                    let production_head = head_of_production(n);
-                    let new_state = goto(top, production_head);
+       loop {
+           let top = self.stack.last().unwrap();
+           let token = self.current_token.clone().unwrap();
 
-                    self.stack.push(new_state);
-                }
-                Action::Accept => {
-                    return;
-                }
-                Action::Error => {
-                    panic!("[SYNTAX ERROR] at {}", self.lex.line_number());
-                }
-            }
-        }
-    }
+           match action(top, &token) {
+               Action::Shift(s) => {
+                    self.stack.push(s);
+                    self.current_token = self.lex.next();
+               },
+               Action::Reduce(n, l) => {
+                   self.stack.truncate(self.stack.len() - (l as usize));
+
+                   let top = self.stack.last().cloned().unwrap();
+                   let new_state = goto(top, head_of_production(n));
+                   self.stack.push(new_state);
+                   
+                   return Some(production(n));
+               },
+               Action::Accept => {
+                    return None;
+               },
+               Action::Error => {
+                   panic!("[SYNTAX ERROR] at line {}\nstack: {:?}\tcurrent token: {:?}",
+                       self.lex.line_number(), self.stack, self.current_token);
+               },
+
+           }
+           
+       }
+   }
 }
