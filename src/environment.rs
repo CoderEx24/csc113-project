@@ -54,6 +54,7 @@ struct Class {
     pub name: String,
     pub parent: Type,
     pub features: HashMap<String, ClassFeature>,
+    pub size: usize,
 }
 
 impl Class {
@@ -62,6 +63,7 @@ impl Class {
             name: name.to_owned(),
             parent: parent.unwrap_or(Type::Object),
             features: HashMap::new(),
+            size: 0,
         }
     }
 
@@ -386,7 +388,7 @@ impl Env {
                 param.1, param.0
             ))
         } else {
-            let parameters: HashMap<String, Type> = parameters
+            let parameters = parameters
                 .iter()
                 .map(|(n, t)| (n.clone(), self.into_type(t).unwrap()))
                 .collect();

@@ -1,6 +1,6 @@
+mod environment;
 mod lexer;
 mod parser;
-mod environment;
 
 use lexer::Lexer;
 use parser::Parser;
@@ -18,5 +18,7 @@ fn main() {
     let lexer = Lexer::for_file(filename);
     let mut parser = Parser::new(lexer);
 
-    parser.parse();
+    for s in parser {
+        println!("{}", s);
+    }
 }
